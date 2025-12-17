@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FloodWatch WA - Flood Risk Visualization Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>🌊 FloodWatch WA</h1>
+                    <p>Washington State Flood Risk Monitoring & Early Warning System</p>
+                </div>
+                <div class="creator-badge">
+                    <span>Real-time Flood Intelligence</span>
+                    <div class="contact">King County + NOAA + USGS Data Integration</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <!-- Hero Section -->
+            <section class="hero">
+                <h2>Real-time Flood Risk Monitoring for Washington State</h2>
+                <div class="location-selector">
+                    <label for="countySelect">Select County:</label>
+                    <select id="countySelect">
+                        <option value="king">King County</option>
+                        <option value="pierce">Pierce County</option>
+                        <option value="snohomish">Snohomish County</option>
+                        <option value="thurston">Thurston County</option>
+                        <option value="kitsap">Kitsap County</option>
+                        <option value="clark">Clark County</option>
+                        <option value="skagit">Skagit County</option>
+                        <option value="whatcom">Whatcom County</option>
+                    </select>
+                    <button id="updateLocation">Update Data</button>
+                </div>
+                <div class="current-location">
+                    <span>📍 Currently monitoring: <span id="currentCounty">King County, WA</span></span>
+                </div>
+                <div class="last-updated">
+                    Last Updated: <span id="lastUpdated"></span>
+                </div>
+                <div class="alert-banner" id="alertBanner" style="display: none;">
+                    <div class="alert-content">
+                        <span class="alert-icon">⚠️</span>
+                        <span class="alert-text">Flood Watch Active - Monitor conditions closely</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Key Flood Risk Metrics -->
+            <section class="metrics-grid">
+                <div class="metric-card flood-risk">
+                    <div class="metric-header">
+                        <h3>Overall Flood Risk</h3>
+                        <span class="status moderate" id="riskStatus">Moderate</span>
+                    </div>
+                    <div class="metric-value">
+                        <span class="number" id="floodRiskValue">65</span>
+                        <span class="unit">%</span>
+                    </div>
+                    <div class="metric-description">Short-term risk assessment</div>
+                </div>
+
+                <div class="metric-card rainfall">
+                    <div class="metric-header">
+                        <h3>Current Rainfall</h3>
+                        <span class="icon">🌧️</span>
+                    </div>
+                    <div class="metric-value">
+                        <span class="number" id="rainfallValue">1.2</span>
+                        <span class="unit">in/hr</span>
+                    </div>
+                    <div class="metric-description">Last hour precipitation</div>
+                </div>
+
+                <div class="metric-card river-level">
+                    <div class="metric-header">
+                        <h3>River Level</h3>
+                        <span class="icon">🌊</span>
+                    </div>
+                    <div class="metric-value">
+                        <span class="number" id="riverLevelValue">8.2</span>
+                        <span class="unit">ft</span>
+                    </div>
+                    <div class="metric-description">Above normal stage</div>
+                </div>
+
+                <div class="metric-card streamflow">
+                    <div class="metric-header">
+                        <h3>Streamflow</h3>
+                        <span class="icon">💧</span>
+                    </div>
+                    <div class="metric-value">
+                        <span class="number" id="streamflowValue">2,450</span>
+                        <span class="unit">cfs</span>
+                    </div>
+                    <div class="metric-description">Cubic feet per second</div>
+                </div>
+
+                <div class="metric-card soil-saturation">
+                    <div class="metric-header">
+                        <h3>Soil Saturation</h3>
+                        <span class="icon">🌱</span>
+                    </div>
+                    <div class="metric-value">
+                        <span class="number" id="soilSatValue">78</span>
+                        <span class="unit">%</span>
+                    </div>
+                    <div class="metric-description">Ground water capacity</div>
+                </div>
+            </section>
+
+            <!-- Navigation Tabs -->
+            <section class="tab-navigation">
+                <div class="tab-buttons">
+                    <button class="tab-button active" data-tab="dashboard">🌊 Flood Dashboard</button>
+                    <button class="tab-button" data-tab="forecast">📈 Risk Forecast</button>
+                    <button class="tab-button" data-tab="historical">📊 Historical Trends</button>
+                    <button class="tab-button" data-tab="alerts">🚨 Alerts & Warnings</button>
+                </div>
+            </section>
+
+            <!-- Dashboard Content Tab -->
+            <div class="tab-content active" id="dashboard-content">
+                <!-- Charts Section -->
+                <section class="charts-section">
+                    <div class="chart-container">
+                        <h3>24-Hour Rainfall Trend</h3>
+                        <canvas id="rainfallChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>River Level Monitoring</h3>
+                        <canvas id="riverLevelChart"></canvas>
+                    </div>
+                </section>
+
+                <!-- Map Section -->
+                <section class="map-section">
+                    <h3>Washington State Flood Risk Map</h3>
+                    <div id="map"></div>
+                    <div class="map-legend">
+                        <div class="legend-item">
+                            <span class="legend-color low"></span>
+                            <span>Low Risk</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color moderate"></span>
+                            <span>Moderate Risk</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color high"></span>
+                            <span>High Risk</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color extreme"></span>
+                            <span>Extreme Risk</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Safety Tips -->
+                <section class="tips-section">
+                    <h3>Flood Safety & Preparedness</h3>
+                    <div class="tips-grid">
+                        <div class="tip-card">
+                            <div class="tip-icon">🚗</div>
+                            <h4>Never Drive Through Flooded Roads</h4>
+                            <p>Turn around, don't drown. Just 6 inches of moving water can knock you down, and 12 inches can carry away a vehicle.</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">📱</div>
+                            <h4>Stay Informed</h4>
+                            <p>Monitor weather alerts, evacuation orders, and emergency communications from local authorities.</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">🎒</div>
+                            <h4>Emergency Kit Ready</h4>
+                            <p>Keep 72-hour emergency supplies including water, food, medications, and battery-powered radio.</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">🏠</div>
+                            <h4>Know Your Evacuation Plan</h4>
+                            <p>Identify multiple evacuation routes and have a family communication plan in place.</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Forecast Content Tab -->
+            <div class="tab-content" id="forecast-content">
+                <section class="forecast-section">
+                    <div class="section-header">
+                        <h3>📈 7-Day Flood Risk Forecast</h3>
+                        <p>Predictive modeling based on weather forecasts, soil conditions, and historical data</p>
+                    </div>
+                    
+                    <!-- 7-Day Risk Forecast -->
+                    <div class="risk-forecast-container">
+                        <div class="forecast-grid" id="riskForecastGrid">
+                            <!-- Forecast items will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Precipitation Forecast Chart -->
+                    <div class="precipitation-section">
+                        <h4>7-Day Precipitation & Risk Correlation</h4>
+                        <div class="precipitation-chart">
+                            <canvas id="precipitationForecastChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Watershed Conditions -->
+                    <div class="watershed-conditions">
+                        <h4>Watershed Health Indicators</h4>
+                        <div class="watershed-grid">
+                            <div class="watershed-card">
+                                <div class="watershed-icon">🏔️</div>
+                                <div class="watershed-title">Snowpack Level</div>
+                                <div class="watershed-value" id="snowpackLevel">115%</div>
+                                <div class="watershed-description">Of seasonal average</div>
+                            </div>
+                            <div class="watershed-card">
+                                <div class="watershed-icon">🌡️</div>
+                                <div class="watershed-title">Temperature Trend</div>
+                                <div class="watershed-value" id="tempTrend">Rising</div>
+                                <div class="watershed-description">Potential snow melt</div>
+                            </div>
+                            <div class="watershed-card">
+                                <div class="watershed-icon">💨</div>
+                                <div class="watershed-title">Atmospheric River</div>
+                                <div class="watershed-value" id="atmosphericRiver">Moderate</div>
+                                <div class="watershed-description">Moisture transport</div>
+                            </div>
+                            <div class="watershed-card">
+                                <div class="watershed-icon">⛈️</div>
+                                <div class="watershed-title">Storm Systems</div>
+                                <div class="watershed-value" id="stormSystems">2-3</div>
+                                <div class="watershed-description">Expected this week</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Historical Trends Content Tab -->
+            <div class="tab-content" id="historical-content">
+                <section class="historical-section">
+                    <div class="section-header">
+                        <h3>📊 Historical Flood Trends & Climate Analysis</h3>
+                        <p>Washington State flood patterns over the past decade with climate change indicators</p>
+                    </div>
+
+                    <!-- Historical Charts -->
+                    <div class="historical-charts">
+                        <div class="chart-container">
+                            <h4>Annual Flood Events (2015-2024)</h4>
+                            <canvas id="historicalFloodsChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h4>Seasonal Rainfall Patterns</h4>
+                            <canvas id="seasonalRainfallChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Climate Trends -->
+                    <div class="climate-trends">
+                        <h4>Climate Change Impact Analysis</h4>
+                        <div class="trends-grid">
+                            <div class="trend-card increasing">
+                                <div class="trend-icon">📈</div>
+                                <div class="trend-title">Extreme Precipitation</div>
+                                <div class="trend-value">+23%</div>
+                                <div class="trend-description">Increase in heavy rainfall events since 2000</div>
+                            </div>
+                            <div class="trend-card stable">
+                                <div class="trend-icon">➡️</div>
+                                <div class="trend-title">Average Rainfall</div>
+                                <div class="trend-value">+2%</div>
+                                <div class="trend-description">Slight increase in annual precipitation</div>
+                            </div>
+                            <div class="trend-card increasing">
+                                <div class="trend-icon">🔥</div>
+                                <div class="trend-title">Temperature</div>
+                                <div class="trend-value">+1.8°F</div>
+                                <div class="trend-description">Average warming since 1990</div>
+                            </div>
+                            <div class="trend-card decreasing">
+                                <div class="trend-icon">❄️</div>
+                                <div class="trend-title">Snowpack Duration</div>
+                                <div class="trend-value">-12 days</div>
+                                <div class="trend-description">Earlier spring melt timing</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notable Flood Events -->
+                    <div class="notable-events">
+                        <h4>Notable Flood Events in Washington State</h4>
+                        <div class="events-timeline">
+                            <div class="event-item">
+                                <div class="event-date">November 2024</div>
+                                <div class="event-title">Atmospheric River Event</div>
+                                <div class="event-description">Record rainfall caused widespread flooding across Western Washington</div>
+                                <div class="event-impact">Economic Impact: $45M</div>
+                            </div>
+                            <div class="event-item">
+                                <div class="event-date">January 2022</div>
+                                <div class="event-title">King County Flooding</div>
+                                <div class="event-description">Rapid snowmelt and rain caused river flooding</div>
+                                <div class="event-impact">Homes Affected: 230</div>
+                            </div>
+                            <div class="event-item">
+                                <div class="event-date">February 2020</div>
+                                <div class="event-title">Coastal Storm System</div>
+                                <div class="event-description">Pacific storm brought heavy rain and coastal flooding</div>
+                                <div class="event-impact">Roads Closed: 45</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Alerts & Warnings Content Tab -->
+            <div class="tab-content" id="alerts-content">
+                <section class="alerts-section">
+                    <div class="section-header">
+                        <h3>🚨 Active Flood Alerts & Early Warnings</h3>
+                        <p>Real-time alerts from National Weather Service, King County, and local emergency management</p>
+                    </div>
+
+                    <!-- Active Alerts -->
+                    <div class="active-alerts" id="activeAlerts">
+                        <!-- Alerts will be populated by JavaScript -->
+                    </div>
+
+                    <!-- Warning Systems -->
+                    <div class="warning-systems">
+                        <h4>🔔 Emergency Alert Systems</h4>
+                        <div class="systems-grid">
+                            <div class="system-card">
+                                <div class="system-icon">📡</div>
+                                <div class="system-title">National Weather Service</div>
+                                <div class="system-status active">Active Monitoring</div>
+                                <div class="system-description">Federal weather alerts and warnings</div>
+                            </div>
+                            <div class="system-card">
+                                <div class="system-icon">🏛️</div>
+                                <div class="system-title">King County Emergency</div>
+                                <div class="system-status active">Active Monitoring</div>
+                                <div class="system-description">Local emergency management alerts</div>
+                            </div>
+                            <div class="system-card">
+                                <div class="system-icon">🌊</div>
+                                <div class="system-title">USGS River Gauges</div>
+                                <div class="system-status active">Active Monitoring</div>
+                                <div class="system-description">Real-time streamflow monitoring</div>
+                            </div>
+                            <div class="system-card">
+                                <div class="system-icon">📱</div>
+                                <div class="system-title">WA Emergency Alerts</div>
+                                <div class="system-status active">Active Monitoring</div>
+                                <div class="system-description">Statewide emergency broadcast system</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Evacuation Information -->
+                    <div class="evacuation-info">
+                        <h4>🚪 Evacuation Routes & Shelters</h4>
+                        <div class="evacuation-grid">
+                            <div class="evacuation-card">
+                                <div class="evacuation-icon">🗺️</div>
+                                <div class="evacuation-title">Primary Evacuation Routes</div>
+                                <ul class="evacuation-list">
+                                    <li>I-5 North/South - Main arterial</li>
+                                    <li>I-405 - Alternative route</li>
+                                    <li>SR-520 - East-West corridor</li>
+                                    <li>I-90 - Mountain passes access</li>
+                                </ul>
+                            </div>
+                            <div class="evacuation-card">
+                                <div class="evacuation-icon">🏫</div>
+                                <div class="evacuation-title">Emergency Shelters</div>
+                                <ul class="evacuation-list">
+                                    <li>Seattle Center - 1,000 capacity</li>
+                                    <li>Bellevue High School - 500 capacity</li>
+                                    <li>Renton Community Center - 300 capacity</li>
+                                    <li>Federal Way Recreation Center - 400 capacity</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- About Section -->
+            <section class="hero about-section">
+                <h2>About FloodWatch WA</h2>
+                <p>This flood risk visualization dashboard integrates real-time data from multiple sources including King County flood warning systems, NOAA rainfall monitoring, USGS streamflow gauges, and Washington State emergency management. The system uses advanced modeling to assess short-term flood risks and provide early warnings to protect communities across Western Washington. Historical trend analysis helps identify climate change impacts on flood patterns, supporting long-term resilience planning.</p>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About FloodWatch WA</h4>
+                    <p>A comprehensive flood risk monitoring system for Washington State, integrating data from multiple agencies to provide real-time flood intelligence and early warning capabilities for community safety.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Data Sources</h4>
+                    <ul>
+                        <li>King County Flood Warning System</li>
+                        <li>NOAA Weather Service - Precipitation Data</li>
+                        <li>USGS Water Services - Stream Gauges</li>
+                        <li>Washington State Emergency Management</li>
+                        <li>National Weather Service - Flood Warnings</li>
+                        <li>Pacific Northwest Seismic Network</li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Emergency Contacts</h4>
+                    <p>King County Emergency Management<br>
+                    📞 Emergency: 911<br>
+                    📞 Non-Emergency: (206) 296-3830<br>
+                    🌐 <a href="https://kingcounty.gov/emergency" style="color: #74b9ff;">kingcounty.gov/emergency</a></p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 FloodWatch WA | Washington State Flood Risk Intelligence Platform | For informational purposes - always follow official emergency guidance</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
