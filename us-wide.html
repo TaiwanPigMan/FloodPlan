@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FloodPlan USA - United States State-Level Flood Risk Assessment</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Navigation Header -->
+        <nav class="top-navigation">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <h1><i class="fas fa-water"></i> FloodPlan</h1>
+                </div>
+                <div class="nav-tabs">
+                    <a href="wa-state.html" class="nav-tab">
+                        <i class="fas fa-map-pin"></i> Washington State
+                    </a>
+                    <a href="us-wide.html" class="nav-tab active">
+                        <i class="fas fa-flag-usa"></i> United States
+                    </a>
+                    <a href="index.html" class="nav-tab">
+                        <i class="fas fa-globe-americas"></i> Worldwide
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Emergency Alert Bar -->
+        <div class="emergency-banner" id="emergencyBanner">
+            <div class="emergency-content">
+                <span class="emergency-icon">🚨</span>
+                <span class="emergency-text">United States: 7 Active Flood Warnings - Multiple States Affected</span>
+                <button class="emergency-details-btn" onclick="toggleUSEmergencyDetails()">View Details</button>
+            </div>
+        </div>
+
+        <!-- Header Section -->
+        <header class="header">
+            <div class="header-container">
+                <div class="logo-section">
+                    <h1><i class="fas fa-flag-usa"></i> FloodPlan United States</h1>
+                    <p>State-Level Flood Risk Assessment & National Emergency Coordination</p>
+                </div>
+                <div class="controls-section">
+                    <div class="scenario-controls">
+                        <select id="stateSelect" class="control-select">
+                            <option value="all">All States</option>
+                            <option value="washington">Washington</option>
+                            <option value="california">California</option>
+                            <option value="texas">Texas</option>
+                            <option value="florida">Florida</option>
+                            <option value="louisiana">Louisiana</option>
+                            <option value="illinois">Illinois</option>
+                            <option value="iowa">Iowa</option>
+                            <option value="missouri">Missouri</option>
+                            <option value="northcarolina">North Carolina</option>
+                            <option value="southcarolina">South Carolina</option>
+                        </select>
+                        <select id="usTimeRange" class="control-select">
+                            <option value="current">Current</option>
+                            <option value="24hour">24-Hour Forecast</option>
+                            <option value="weekly">Weekly Outlook</option>
+                            <option value="seasonal">Seasonal Forecast</option>
+                        </select>
+                        <button id="emergencyMode" class="emergency-btn">
+                            <i class="fas fa-exclamation-triangle"></i> FEMA Alert
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- US National Statistics -->
+        <main class="main-content">
+            <section class="global-stats">
+                <div class="stat-item">
+                    <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="activeFloodsUS">7</div>
+                        <div class="stat-label">Active Warnings</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon"><i class="fas fa-map"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="statesAffectedUS">12</div>
+                        <div class="stat-label">States Affected</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon"><i class="fas fa-users"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="peopleAtRiskUS">450K</div>
+                        <div class="stat-label">People at Risk</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon"><i class="fas fa-home"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="evacuationCentersUS">89</div>
+                        <div class="stat-label">Evacuation Centers</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon"><i class="fas fa-dollar-sign"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="economicImpactUS">$890M</div>
+                        <div class="stat-label">Economic Impact</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- US National Map -->
+            <section class="map-container">
+                <div class="map-header">
+                    <h2><i class="fas fa-map-marked-alt"></i> United States State-Level Flood Risk Map</h2>
+                    <div class="map-controls">
+                        <button class="map-control-btn active" data-layer="states">State Risk</button>
+                        <button class="map-control-btn" data-layer="rivers">River Systems</button>
+                        <button class="map-control-btn" data-layer="weather">Weather Patterns</button>
+                        <button class="map-control-btn" data-layer="infrastructure">Infrastructure</button>
+                    </div>
+                </div>
+                <div id="usMap" class="world-map"></div>
+                <div class="map-overlay">
+                    <div class="legend">
+                        <h3><i class="fas fa-info-circle"></i> State Risk Levels</h3>
+                        <div class="legend-items">
+                            <div class="legend-item">
+                                <span class="color-box minimal"></span>
+                                <span>Minimal (0-20%)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="color-box low"></span>
+                                <span>Low (21-40%)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="color-box moderate"></span>
+                                <span>Moderate (41-60%)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="color-box high"></span>
+                                <span>High (61-80%)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="color-box extreme"></span>
+                                <span>Extreme (81-100%)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="color-box emergency"></span>
+                                <span>FEMA Emergency</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" onclick="zoomToUSRegion('national')">🇺🇸 National</button>
+                        <button class="zoom-btn" onclick="zoomToUSRegion('west')">🏔️ West Coast</button>
+                        <button class="zoom-btn" onclick="zoomToUSRegion('central')">🌾 Central Plains</button>
+                        <button class="zoom-btn" onclick="zoomToUSRegion('east')">🏙️ East Coast</button>
+                        <button class="zoom-btn" onclick="zoomToUSRegion('south')">🌴 Gulf Coast</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Content Grid -->
+            <section class="content-grid">
+                <!-- Side Panel -->
+                <div class="side-panel">
+                    <div class="panel-section">
+                        <h3><i class="fas fa-map-pin"></i> Selected State</h3>
+                        <div id="stateInfo" class="region-info">
+                            <div class="info-placeholder">
+                                <i class="fas fa-mouse-pointer"></i>
+                                <p>Click any state for detailed flood risk analysis</p>
+                                <div class="sample-data">
+                                    <h4>National Overview</h4>
+                                    <ul>
+                                        <li>🌊 Highest Risk: Gulf Coast States</li>
+                                        <li>📈 Rising: Pacific Northwest Rivers</li>
+                                        <li>⚠️ Watch: Mississippi River Basin</li>
+                                        <li>🎯 Monitoring: 3,247 USGS gauges</li>
+                                        <li>🏛️ FEMA: 12 active disaster declarations</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-section">
+                        <h3><i class="fas fa-shield-alt"></i> FEMA Operations</h3>
+                        <div class="emergency-options">
+                            <button class="response-btn evacuation">
+                                <i class="fas fa-road"></i> Evacuation Zones
+                            </button>
+                            <button class="response-btn shelters">
+                                <i class="fas fa-home"></i> Red Cross Shelters
+                            </button>
+                            <button class="response-btn rescue">
+                                <i class="fas fa-helicopter"></i> National Guard
+                            </button>
+                            <button class="response-btn supplies">
+                                <i class="fas fa-truck"></i> Supply Distribution
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="panel-section">
+                        <h3><i class="fas fa-bell"></i> National Alerts</h3>
+                        <div class="alerts-container">
+                            <div class="alert critical">
+                                <span class="alert-icon">🔴</span>
+                                <div class="alert-content">
+                                    <strong>Flash Flood Emergency</strong>
+                                    <p>Texas: Houston Metro area severe flooding</p>
+                                    <small><i class="fas fa-clock"></i> 1 hour ago</small>
+                                </div>
+                            </div>
+                            <div class="alert warning">
+                                <span class="alert-icon">🟡</span>
+                                <div class="alert-content">
+                                    <strong>Flood Warning</strong>
+                                    <p>Missouri: Mississippi River above flood stage</p>
+                                    <small><i class="fas fa-clock"></i> 3 hours ago</small>
+                                </div>
+                            </div>
+                            <div class="alert warning">
+                                <span class="alert-icon">🟡</span>
+                                <div class="alert-content">
+                                    <strong>River Flood Warning</strong>
+                                    <p>Washington: Columbia River at moderate stage</p>
+                                    <small><i class="fas fa-clock"></i> 5 hours ago</small>
+                                </div>
+                            </div>
+                            <div class="alert info">
+                                <span class="alert-icon">🔵</span>
+                                <div class="alert-content">
+                                    <strong>Flood Watch</strong>
+                                    <p>California: Atmospheric river approaching</p>
+                                    <small><i class="fas fa-clock"></i> 8 hours ago</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-section">
+                        <h3><i class="fas fa-chart-bar"></i> National Analytics</h3>
+                        <div class="analytics-grid">
+                            <div class="analytics-card">
+                                <div class="analytics-icon">📊</div>
+                                <div class="analytics-title">National Risk Index</div>
+                                <div class="analytics-value">68.4</div>
+                                <div class="analytics-trend up">+3.2% this month</div>
+                            </div>
+                            <div class="analytics-card">
+                                <div class="analytics-icon">🌧️</div>
+                                <div class="analytics-title">Precipitation Above Normal</div>
+                                <div class="analytics-value">+18%</div>
+                                <div class="analytics-trend up">Seasonal average</div>
+                            </div>
+                            <div class="analytics-card">
+                                <div class="analytics-icon">🌊</div>
+                                <div class="analytics-title">River Stage Alerts</div>
+                                <div class="analytics-value">23</div>
+                                <div class="analytics-trend up">Active nationwide</div>
+                            </div>
+                            <div class="analytics-card">
+                                <div class="analytics-icon">🏠</div>
+                                <div class="analytics-title">Properties at Risk</div>
+                                <div class="analytics-value">8.7M</div>
+                                <div class="analytics-trend up">FEMA flood zones</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Dashboard Content -->
+                <div class="dashboard-content">
+                    <div class="tab-navigation">
+                        <button class="tab-btn active" data-tab="overview">
+                            <i class="fas fa-flag"></i> National Overview
+                        </button>
+                        <button class="tab-btn" data-tab="states">
+                            <i class="fas fa-map"></i> State Analysis
+                        </button>
+                        <button class="tab-btn" data-tab="rivers">
+                            <i class="fas fa-water"></i> Major Rivers
+                        </button>
+                        <button class="tab-btn" data-tab="forecast">
+                            <i class="fas fa-crystal-ball"></i> Weather Forecast
+                        </button>
+                    </div>
+
+                    <!-- Overview Tab -->
+                    <div class="tab-content active" id="overview-tab">
+                        <div class="overview-grid">
+                            <div class="chart-container">
+                                <h4><i class="fas fa-chart-line"></i> National Flood Trend (6 Months)</h4>
+                                <canvas id="nationalFloodTrendChart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <h4><i class="fas fa-cloud-rain"></i> Precipitation by Region</h4>
+                                <canvas id="regionalPrecipitationChart"></canvas>
+                            </div>
+                            <div class="data-grid">
+                                <h4><i class="fas fa-table"></i> High-Risk State Summary</h4>
+                                <div class="county-summary-table">
+                                    <div class="table-header">
+                                        <span>State</span>
+                                        <span>Current Risk</span>
+                                        <span>Population at Risk</span>
+                                        <span>FEMA Status</span>
+                                        <span>Economic Impact</span>
+                                    </div>
+                                    <div class="table-row">
+                                        <span class="county-name">Texas</span>
+                                        <span class="risk-level extreme">Extreme</span>
+                                        <span class="population">125,000</span>
+                                        <span class="rivers">Major Disaster</span>
+                                        <span class="population">$340M</span>
+                                    </div>
+                                    <div class="table-row">
+                                        <span class="county-name">Louisiana</span>
+                                        <span class="risk-level high">High</span>
+                                        <span class="population">89,000</span>
+                                        <span class="rivers">Emergency Declaration</span>
+                                        <span class="population">$210M</span>
+                                    </div>
+                                    <div class="table-row">
+                                        <span class="county-name">Florida</span>
+                                        <span class="risk-level high">High</span>
+                                        <span class="population">76,000</span>
+                                        <span class="rivers">Flood Warning</span>
+                                        <span class="population">$180M</span>
+                                    </div>
+                                    <div class="table-row">
+                                        <span class="county-name">Missouri</span>
+                                        <span class="risk-level moderate">Moderate</span>
+                                        <span class="population">45,000</span>
+                                        <span class="rivers">Monitoring</span>
+                                        <span class="population">$95M</span>
+                                    </div>
+                                    <div class="table-row">
+                                        <span class="county-name">Washington</span>
+                                        <span class="risk-level moderate">Moderate</span>
+                                        <span class="population">38,000</span>
+                                        <span class="rivers">Advisory</span>
+                                        <span class="population">$65M</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- States Tab -->
+                    <div class="tab-content" id="states-tab">
+                        <div class="counties-grid">
+                            <div class="county-card high-risk">
+                                <div class="county-header">
+                                    <h3>Texas</h3>
+                                    <span class="risk-badge high">Extreme Risk</span>
+                                </div>
+                                <div class="county-stats">
+                                    <div class="stat">
+                                        <span class="label">Population at Risk:</span>
+                                        <span class="value">125,000</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">FEMA Status:</span>
+                                        <span class="value">Major Disaster</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">Economic Impact:</span>
+                                        <span class="value trend-up">$340M</span>
+                                    </div>
+                                </div>
+                                <div class="major-rivers">
+                                    <h4>Major River Basins</h4>
+                                    <div class="river-list">
+                                        <div class="river-item">
+                                            <span class="river-name">Colorado River</span>
+                                            <span class="river-status warning">Above Normal</span>
+                                        </div>
+                                        <div class="river-item">
+                                            <span class="river-name">Trinity River</span>
+                                            <span class="river-status critical">Flood Stage</span>
+                                        </div>
+                                        <div class="river-item">
+                                            <span class="river-name">Brazos River</span>
+                                            <span class="river-status warning">Rising</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="county-card high-risk">
+                                <div class="county-header">
+                                    <h3>Louisiana</h3>
+                                    <span class="risk-badge high">High Risk</span>
+                                </div>
+                                <div class="county-stats">
+                                    <div class="stat">
+                                        <span class="label">Population at Risk:</span>
+                                        <span class="value">89,000</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">FEMA Status:</span>
+                                        <span class="value">Emergency Declaration</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">Economic Impact:</span>
+                                        <span class="value trend-up">$210M</span>
+                                    </div>
+                                </div>
+                                <div class="major-rivers">
+                                    <h4>Major River Systems</h4>
+                                    <div class="river-list">
+                                        <div class="river-item">
+                                            <span class="river-name">Mississippi River</span>
+                                            <span class="river-status warning">Above Flood Stage</span>
+                                        </div>
+                                        <div class="river-item">
+                                            <span class="river-name">Atchafalaya River</span>
+                                            <span class="river-status watch">Watch</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="county-card high-risk">
+                                <div class="county-header">
+                                    <h3>Florida</h3>
+                                    <span class="risk-badge high">High Risk</span>
+                                </div>
+                                <div class="county-stats">
+                                    <div class="stat">
+                                        <span class="label">Population at Risk:</span>
+                                        <span class="value">76,000</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">FEMA Status:</span>
+                                        <span class="value">Flood Warning</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">Economic Impact:</span>
+                                        <span class="value trend-up">$180M</span>
+                                    </div>
+                                </div>
+                                <div class="major-rivers">
+                                    <h4>Major Coastal Areas</h4>
+                                    <div class="river-list">
+                                        <div class="river-item">
+                                            <span class="river-name">Everglades Region</span>
+                                            <span class="river-status normal">Normal</span>
+                                        </div>
+                                        <div class="river-item">
+                                            <span class="river-name">Tampa Bay Area</span>
+                                            <span class="river-status watch">Storm Watch</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="county-card moderate-risk">
+                                <div class="county-header">
+                                    <h3>Washington</h3>
+                                    <span class="risk-badge moderate">Moderate Risk</span>
+                                </div>
+                                <div class="county-stats">
+                                    <div class="stat">
+                                        <span class="label">Population at Risk:</span>
+                                        <span class="value">38,000</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">FEMA Status:</span>
+                                        <span class="value">Advisory</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">Economic Impact:</span>
+                                        <span class="value trend-stable">$65M</span>
+                                    </div>
+                                </div>
+                                <div class="major-rivers">
+                                    <h4>Major River Systems</h4>
+                                    <div class="river-list">
+                                        <div class="river-item">
+                                            <span class="river-name">Columbia River</span>
+                                            <span class="river-status normal">Normal</span>
+                                        </div>
+                                        <div class="river-item">
+                                            <span class="river-name">Puget Sound Region</span>
+                                            <span class="river-status normal">Normal</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rivers Tab -->
+                    <div class="tab-content" id="rivers-tab">
+                        <div class="rivers-grid">
+                            <div class="chart-container">
+                                <h4><i class="fas fa-chart-area"></i> Major US River Levels</h4>
+                                <canvas id="usRiverLevelsChart"></canvas>
+                            </div>
+                            <div class="river-systems-list">
+                                <h4><i class="fas fa-water"></i> Critical River Systems</h4>
+                                <div class="river-status-list">
+                                    <div class="river-status-item critical">
+                                        <div class="river-header">
+                                            <span class="river-name">Mississippi River (Missouri)</span>
+                                            <span class="status-badge critical">Above Flood Stage</span>
+                                        </div>
+                                        <div class="river-details">
+                                            <div class="gauge-reading">Current: 34.2 ft | Flood Stage: 30.0 ft</div>
+                                            <div class="trend">Impact: 15 communities affected</div>
+                                        </div>
+                                    </div>
+                                    <div class="river-status-item warning">
+                                        <div class="river-header">
+                                            <span class="river-name">Trinity River (Texas)</span>
+                                            <span class="status-badge warning">Rising Rapidly</span>
+                                        </div>
+                                        <div class="river-details">
+                                            <div class="gauge-reading">Current: 28.7 ft | Flood Stage: 30.0 ft</div>
+                                            <div class="trend">Rising at 0.5 ft/hour</div>
+                                        </div>
+                                    </div>
+                                    <div class="river-status-item normal">
+                                        <div class="river-header">
+                                            <span class="river-name">Columbia River (Washington)</span>
+                                            <span class="status-badge normal">Normal</span>
+                                        </div>
+                                        <div class="river-details">
+                                            <div class="gauge-reading">Current: 18.3 ft | Action Stage: 21.0 ft</div>
+                                            <div class="trend">Seasonal flows within normal range</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Forecast Tab -->
+                    <div class="tab-content" id="forecast-tab">
+                        <div class="forecast-grid">
+                            <div class="chart-container">
+                                <h4><i class="fas fa-cloud-rain"></i> 7-Day National Precipitation Forecast</h4>
+                                <canvas id="nationalPrecipitationForecastChart"></canvas>
+                            </div>
+                            <div class="forecast-summary">
+                                <h4><i class="fas fa-calendar-week"></i> National Weather Outlook</h4>
+                                <div class="forecast-items">
+                                    <div class="forecast-item">
+                                        <div class="forecast-date">Today - Tomorrow</div>
+                                        <div class="forecast-condition">Severe Thunderstorms</div>
+                                        <div class="forecast-details">Texas & Louisiana: 3-6" rainfall expected</div>
+                                    </div>
+                                    <div class="forecast-item">
+                                        <div class="forecast-date">Weekend</div>
+                                        <div class="forecast-condition">Pacific Storm System</div>
+                                        <div class="forecast-details">West Coast: 2-4" rain, mountain snow</div>
+                                    </div>
+                                    <div class="forecast-item">
+                                        <div class="forecast-date">Next Week</div>
+                                        <div class="forecast-condition">Mississippi Valley Storms</div>
+                                        <div class="forecast-details">Central states: widespread moderate rainfall</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- US Emergency Modal -->
+        <div id="usEmergencyModal" class="emergency-modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Active US Flood Emergencies</h3>
+                    <button class="modal-close" onclick="toggleUSEmergencyDetails()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="emergency-list">
+                        <div class="emergency-item critical">
+                            <div class="emergency-header">
+                                <span class="emergency-location">Texas - Houston Metropolitan Area</span>
+                                <span class="emergency-severity critical">Flash Flood Emergency</span>
+                            </div>
+                            <div class="emergency-details">
+                                <p><strong>Urban Flooding:</strong> Severe thunderstorms producing life-threatening flash flooding across Harris County and surrounding areas.</p>
+                                <div class="emergency-stats">
+                                    <span>👥 Current: 125,000 affected</span>
+                                    <span>🚨 FEMA: Major Disaster Declaration</span>
+                                    <span>⏰ Peak Expected: Next 6 hours</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="emergency-item warning">
+                            <div class="emergency-header">
+                                <span class="emergency-location">Missouri - Mississippi River Basin</span>
+                                <span class="emergency-severity warning">River Flood Warning</span>
+                            </div>
+                            <div class="emergency-details">
+                                <p><strong>River Flooding:</strong> Mississippi River above flood stage affecting multiple communities along the river corridor.</p>
+                                <div class="emergency-stats">
+                                    <span>🌊 Current: 34.2 ft</span>
+                                    <span>⚠️ Flood Stage: 30.0 ft</span>
+                                    <span>📍 Communities: 15 affected</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="emergency-item warning">
+                            <div class="emergency-header">
+                                <span class="emergency-location">Louisiana - Atchafalaya River Basin</span>
+                                <span class="emergency-severity warning">Flood Watch</span>
+                            </div>
+                            <div class="emergency-details">
+                                <p><strong>Rising Waters:</strong> Heavy rainfall causing river levels to rise. Continued monitoring for potential flooding.</p>
+                                <div class="emergency-stats">
+                                    <span>🌊 Current: 22.1 ft</span>
+                                    <span>⚠️ Action Stage: 25.0 ft</span>
+                                    <span>📈 Rising: 0.2 ft/hr</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="us-wide.js"></script>
+</body>
+</html>

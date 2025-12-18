@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FloodPlan WA - Washington State County-Level Flood Risk Assessment</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Navigation Header -->
+        <nav class="top-navigation">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <h1><i class="fas fa-water"></i> FloodPlan</h1>
+                </div>
+                <div class="nav-tabs">
+                    <a href="wa-state.html" class="nav-tab active">
+                        <i class="fas fa-map-pin"></i> Washington State
+                    </a>
+                    <a href="us-wide.html" class="nav-tab">
+                        <i class="fas fa-flag-usa"></i> United States
+                    </a>
+                    <a href="index.html" class="nav-tab">
+                        <i class="fas fa-globe-americas"></i> Worldwide
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Emergency Alert Bar -->
+        <div class="emergency-banner" id="emergencyBanner">
+            <div class="emergency-content">
+                <span class="emergency-icon">⚠️</span>
+                <span class="emergency-text">Washington State: 2 Active Flood Warnings - King & Skagit Counties</span>
+                <button class="emergency-details-btn" onclick="toggleWAEmergencyDetails()">View Details</button>
+            </div>
+        </div>
+
+        <!-- Header Section -->
+        <header class="header">
+            <div class="header-container">
+                <div class="logo-section">
+                    <h1><i class="fas fa-mountain"></i> Washington State Flood Monitor</h1>
+                    <p>County-Level Flood Risk Assessment & 6-Month Historical Analysis</p>
+                </div>
+                <div class="controls-section">
+                    <div class="scenario-controls">
+                        <select id="countySelect" class="control-select">
+                            <option value="all">All Counties</option>
+                            <option value="king">King County</option>
+                            <option value="pierce">Pierce County</option>
+                            <option value="snohomish">Snohomish County</option>
+                            <option value="thurston">Thurston County</option>
+                            <option value="clark">Clark County</option>
+                            <option value="spokane">Spokane County</option>
+                            <option value="kitsap">Kitsap County</option>
+                            <option value="whatcom">Whatcom County</option>
+                            <option value="skagit">Skagit County</option>
+                            <option value="yakima">Yakima County</option>
+                        </select>
+                        <select id="timeRange" class="control-select">
+                            <option value="current">Current</option>
+                            <option value="1week">Past Week</option>
+                            <option value="1month">Past Month</option>
+                            <option value="3months">Past 3 Months</option>
+                            <option value="6months" selected>Past 6 Months</option>
+                        </select>
+                        <button id="emergencyMode" class="emergency-btn">
+                            <i class="fas fa-exclamation-triangle"></i> Emergency Alert
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Washington State Statistics -->
+        <main class="main-content">
+            <section class="wa-stats">
+                <div class="stat-item">
+                    <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="activeFloodsWA">2</div>
+                        <div class="stat-label">Active Warnings</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon"><i class="fas fa-home"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="countiesAffectedWA">3</div>
+                        <div class="stat-label">Counties Affected</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon"><i class="fas fa-cloud-rain"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="rainfallTotalWA">14.2"</div>
+                        <div class="stat-label">6-Month Rainfall</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon"><i class="fas fa-water"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="riverLevelWA">78%</div>
+                        <div class="stat-label">Avg River Capacity</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon"><i class="fas fa-users"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="peopleAtRiskWA">125K</div>
+                        <div class="stat-label">People at Risk</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Washington State Map -->
+            <section class="map-container">
+                <div class="map-header">
+                    <h2><i class="fas fa-map-marked-alt"></i> Washington State County Flood Risk Map</h2>
+                    <div class="map-controls">
+                        <button class="map-control-btn active" data-layer="counties">County Risk</button>
+                        <button class="map-control-btn" data-layer="rivers">River Systems</button>
+                        <button class="map-control-btn" data-layer="precipitation">Precipitation</button>
+                        <button class="map-control-btn" data-layer="elevation">Elevation</button>
+                    </div>
+                </div>
+                <div id="waMap" class="washington-map"></div>
+                <div class="map-overlay">
+                    <div class="legend">
+                        <h3><i class="fas fa-info-circle"></i> County Risk Levels</h3>
+                        <div class="legend-items">
+                            <div class="legend-item">
+                                <span class="color-box minimal"></span>
+                                <span>Minimal (0-20%)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="color-box low"></span>
+                                <span>Low (21-40%)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="color-box moderate"></span>
+                                <span>Moderate (41-60%)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="color-box high"></span>
+                                <span>High (61-80%)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="color-box extreme"></span>
+                                <span>Extreme (81-100%)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Content Grid -->
+            <section class="content-grid">
+                <!-- Side Panel -->
+                <div class="side-panel">
+                    <div class="panel-section">
+                        <h3><i class="fas fa-map-pin"></i> Selected County</h3>
+                        <div id="countyInfo" class="region-info">
+                            <div class="info-placeholder">
+                                <i class="fas fa-mouse-pointer"></i>
+                                <p>Click any county for detailed flood risk analysis</p>
+                                <div class="sample-data">
+                                    <h4>Washington State Overview</h4>
+                                    <ul>
+                                        <li>🌊 Highest Risk: King County (Seattle Metro)</li>
+                                        <li>📈 Rising: Skagit County River Levels</li>
+                                        <li>⚠️ Watch: Pierce County Watersheds</li>
+                                        <li>🎯 Monitoring: 89 gauges statewide</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-section">
+                        <h3><i class="fas fa-calendar-alt"></i> Historical Trends</h3>
+                        <div class="historical-summary">
+                            <div class="trend-item">
+                                <span class="trend-icon">📈</span>
+                                <div class="trend-content">
+                                    <strong>Rainfall Increase</strong>
+                                    <p>+15% above 10-year average</p>
+                                    <small>November 2024 peak</small>
+                                </div>
+                            </div>
+                            <div class="trend-item">
+                                <span class="trend-icon">🌡️</span>
+                                <div class="trend-content">
+                                    <strong>Temperature Rise</strong>
+                                    <p>+2.3°F warmer than historical</p>
+                                    <small>Accelerated snowmelt</small>
+                                </div>
+                            </div>
+                            <div class="trend-item">
+                                <span class="trend-icon">🏔️</span>
+                                <div class="trend-content">
+                                    <strong>Snowpack Levels</strong>
+                                    <p>118% of seasonal normal</p>
+                                    <small>Cascade Mountains</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-section">
+                        <h3><i class="fas fa-bell"></i> County Alerts</h3>
+                        <div class="alerts-container">
+                            <div class="alert warning">
+                                <span class="alert-icon">🟡</span>
+                                <div class="alert-content">
+                                    <strong>King County Flood Watch</strong>
+                                    <p>Green River above flood stage</p>
+                                    <small><i class="fas fa-clock"></i> 3 hours ago</small>
+                                </div>
+                            </div>
+                            <div class="alert warning">
+                                <span class="alert-icon">🟡</span>
+                                <div class="alert-content">
+                                    <strong>Skagit County Warning</strong>
+                                    <p>Skagit River at 85% capacity</p>
+                                    <small><i class="fas fa-clock"></i> 5 hours ago</small>
+                                </div>
+                            </div>
+                            <div class="alert info">
+                                <span class="alert-icon">🔵</span>
+                                <div class="alert-content">
+                                    <strong>Pierce County Advisory</strong>
+                                    <p>Puyallup River monitoring increased</p>
+                                    <small><i class="fas fa-clock"></i> 1 day ago</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Dashboard Content -->
+                <div class="dashboard-content">
+                    <div class="tab-navigation">
+                        <button class="tab-btn active" data-tab="overview">
+                            <i class="fas fa-chart-bar"></i> 6-Month Overview
+                        </button>
+                        <button class="tab-btn" data-tab="counties">
+                            <i class="fas fa-map"></i> County Analysis
+                        </button>
+                        <button class="tab-btn" data-tab="rivers">
+                            <i class="fas fa-water"></i> River Systems
+                        </button>
+                        <button class="tab-btn" data-tab="forecast">
+                            <i class="fas fa-crystal-ball"></i> Forecast
+                        </button>
+                    </div>
+
+                    <!-- Overview Tab -->
+                    <div class="tab-content active" id="overview-tab">
+                        <div class="overview-grid">
+                            <div class="chart-container">
+                                <h4><i class="fas fa-chart-line"></i> 6-Month Rainfall Trends</h4>
+                                <canvas id="sixMonthRainChart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <h4><i class="fas fa-thermometer-half"></i> Temperature & Snowmelt</h4>
+                                <canvas id="tempSnowChart"></canvas>
+                            </div>
+                            <div class="data-grid">
+                                <h4><i class="fas fa-table"></i> County Risk Summary (Past 6 Months)</h4>
+                                <div class="county-summary-table">
+                                    <div class="table-header">
+                                        <span>County</span>
+                                        <span>Current Risk</span>
+                                        <span>6-Month Trend</span>
+                                        <span>Major Rivers</span>
+                                        <span>Population at Risk</span>
+                                    </div>
+                                    <div class="table-row">
+                                        <span class="county-name">King</span>
+                                        <span class="risk-level high">High</span>
+                                        <span class="trend up">↗ +15%</span>
+                                        <span class="rivers">Green, Cedar, White</span>
+                                        <span class="population">85,000</span>
+                                    </div>
+                                    <div class="table-row">
+                                        <span class="county-name">Skagit</span>
+                                        <span class="risk-level high">High</span>
+                                        <span class="trend up">↗ +22%</span>
+                                        <span class="rivers">Skagit, Sauk</span>
+                                        <span class="population">28,000</span>
+                                    </div>
+                                    <div class="table-row">
+                                        <span class="county-name">Pierce</span>
+                                        <span class="risk-level moderate">Moderate</span>
+                                        <span class="trend up">↗ +8%</span>
+                                        <span class="rivers">Puyallup, Carbon</span>
+                                        <span class="population">12,000</span>
+                                    </div>
+                                    <div class="table-row">
+                                        <span class="county-name">Snohomish</span>
+                                        <span class="risk-level moderate">Moderate</span>
+                                        <span class="trend stable">→ +2%</span>
+                                        <span class="rivers">Snohomish, Pilchuck</span>
+                                        <span class="population">15,000</span>
+                                    </div>
+                                    <div class="table-row">
+                                        <span class="county-name">Clark</span>
+                                        <span class="risk-level low">Low</span>
+                                        <span class="trend down">↘ -5%</span>
+                                        <span class="rivers">Columbia, Lewis</span>
+                                        <span class="population">8,000</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Counties Tab -->
+                    <div class="tab-content" id="counties-tab">
+                        <div class="counties-grid">
+                            <div class="county-card high-risk">
+                                <div class="county-header">
+                                    <h3>King County</h3>
+                                    <span class="risk-badge high">High Risk</span>
+                                </div>
+                                <div class="county-stats">
+                                    <div class="stat">
+                                        <span class="label">Population at Risk:</span>
+                                        <span class="value">85,000</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">Active Gauges:</span>
+                                        <span class="value">23</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">6-Month Trend:</span>
+                                        <span class="value trend-up">+15% ↗</span>
+                                    </div>
+                                </div>
+                                <div class="major-rivers">
+                                    <h4>Major River Systems</h4>
+                                    <div class="river-list">
+                                        <div class="river-item">
+                                            <span class="river-name">Green River</span>
+                                            <span class="river-status warning">Above Flood Stage</span>
+                                        </div>
+                                        <div class="river-item">
+                                            <span class="river-name">Cedar River</span>
+                                            <span class="river-status normal">Normal</span>
+                                        </div>
+                                        <div class="river-item">
+                                            <span class="river-name">White River</span>
+                                            <span class="river-status watch">Watch</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="county-card high-risk">
+                                <div class="county-header">
+                                    <h3>Skagit County</h3>
+                                    <span class="risk-badge high">High Risk</span>
+                                </div>
+                                <div class="county-stats">
+                                    <div class="stat">
+                                        <span class="label">Population at Risk:</span>
+                                        <span class="value">28,000</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">Active Gauges:</span>
+                                        <span class="value">8</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">6-Month Trend:</span>
+                                        <span class="value trend-up">+22% ↗</span>
+                                    </div>
+                                </div>
+                                <div class="major-rivers">
+                                    <h4>Major River Systems</h4>
+                                    <div class="river-list">
+                                        <div class="river-item">
+                                            <span class="river-name">Skagit River</span>
+                                            <span class="river-status warning">85% Capacity</span>
+                                        </div>
+                                        <div class="river-item">
+                                            <span class="river-name">Sauk River</span>
+                                            <span class="river-status watch">Watch</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="county-card moderate-risk">
+                                <div class="county-header">
+                                    <h3>Pierce County</h3>
+                                    <span class="risk-badge moderate">Moderate Risk</span>
+                                </div>
+                                <div class="county-stats">
+                                    <div class="stat">
+                                        <span class="label">Population at Risk:</span>
+                                        <span class="value">12,000</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">Active Gauges:</span>
+                                        <span class="value">12</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">6-Month Trend:</span>
+                                        <span class="value trend-up">+8% ↗</span>
+                                    </div>
+                                </div>
+                                <div class="major-rivers">
+                                    <h4>Major River Systems</h4>
+                                    <div class="river-list">
+                                        <div class="river-item">
+                                            <span class="river-name">Puyallup River</span>
+                                            <span class="river-status normal">Normal</span>
+                                        </div>
+                                        <div class="river-item">
+                                            <span class="river-name">Carbon River</span>
+                                            <span class="river-status normal">Normal</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="county-card moderate-risk">
+                                <div class="county-header">
+                                    <h3>Snohomish County</h3>
+                                    <span class="risk-badge moderate">Moderate Risk</span>
+                                </div>
+                                <div class="county-stats">
+                                    <div class="stat">
+                                        <span class="label">Population at Risk:</span>
+                                        <span class="value">15,000</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">Active Gauges:</span>
+                                        <span class="value">9</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">6-Month Trend:</span>
+                                        <span class="value trend-stable">+2% →</span>
+                                    </div>
+                                </div>
+                                <div class="major-rivers">
+                                    <h4>Major River Systems</h4>
+                                    <div class="river-list">
+                                        <div class="river-item">
+                                            <span class="river-name">Snohomish River</span>
+                                            <span class="river-status normal">Normal</span>
+                                        </div>
+                                        <div class="river-item">
+                                            <span class="river-name">Pilchuck River</span>
+                                            <span class="river-status normal">Normal</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rivers Tab -->
+                    <div class="tab-content" id="rivers-tab">
+                        <div class="rivers-grid">
+                            <div class="chart-container">
+                                <h4><i class="fas fa-chart-area"></i> Major River Levels (6 Months)</h4>
+                                <canvas id="riverLevelsChart"></canvas>
+                            </div>
+                            <div class="river-systems-list">
+                                <h4><i class="fas fa-water"></i> Current River Status</h4>
+                                <div class="river-status-list">
+                                    <div class="river-status-item critical">
+                                        <div class="river-header">
+                                            <span class="river-name">Green River (King County)</span>
+                                            <span class="status-badge critical">Above Flood Stage</span>
+                                        </div>
+                                        <div class="river-details">
+                                            <div class="gauge-reading">Current: 12.3 ft | Flood Stage: 11.5 ft</div>
+                                            <div class="trend">6-Month Peak: 13.1 ft (Nov 2024)</div>
+                                        </div>
+                                    </div>
+                                    <div class="river-status-item warning">
+                                        <div class="river-header">
+                                            <span class="river-name">Skagit River (Skagit County)</span>
+                                            <span class="status-badge warning">85% Capacity</span>
+                                        </div>
+                                        <div class="river-details">
+                                            <div class="gauge-reading">Current: 18.7 ft | Action Stage: 22.0 ft</div>
+                                            <div class="trend">6-Month High: 20.1 ft (Oct 2024)</div>
+                                        </div>
+                                    </div>
+                                    <div class="river-status-item normal">
+                                        <div class="river-header">
+                                            <span class="river-name">Puyallup River (Pierce County)</span>
+                                            <span class="status-badge normal">Normal</span>
+                                        </div>
+                                        <div class="river-details">
+                                            <div class="gauge-reading">Current: 8.2 ft | Action Stage: 12.0 ft</div>
+                                            <div class="trend">6-Month Range: 6.1 - 10.8 ft</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Forecast Tab -->
+                    <div class="tab-content" id="forecast-tab">
+                        <div class="forecast-grid">
+                            <div class="chart-container">
+                                <h4><i class="fas fa-cloud-rain"></i> 10-Day Precipitation Forecast</h4>
+                                <canvas id="precipitationForecastChart"></canvas>
+                            </div>
+                            <div class="forecast-summary">
+                                <h4><i class="fas fa-calendar-week"></i> Weekly Outlook</h4>
+                                <div class="forecast-items">
+                                    <div class="forecast-item">
+                                        <div class="forecast-date">Today - Friday</div>
+                                        <div class="forecast-condition">Heavy Rain Expected</div>
+                                        <div class="forecast-details">2-4 inches, potential river rises</div>
+                                    </div>
+                                    <div class="forecast-item">
+                                        <div class="forecast-date">Weekend</div>
+                                        <div class="forecast-condition">Atmospheric River</div>
+                                        <div class="forecast-details">3-6 inches, flood watch likely</div>
+                                    </div>
+                                    <div class="forecast-item">
+                                        <div class="forecast-date">Next Week</div>
+                                        <div class="forecast-condition">Gradual Improvement</div>
+                                        <div class="forecast-details">Light rain, river levels stabilizing</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- WA Emergency Modal -->
+        <div id="waEmergencyModal" class="emergency-modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Active Washington State Flood Warnings</h3>
+                    <button class="modal-close" onclick="toggleWAEmergencyDetails()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="emergency-list">
+                        <div class="emergency-item warning">
+                            <div class="emergency-header">
+                                <span class="emergency-location">King County - Green River</span>
+                                <span class="emergency-severity warning">Flood Warning</span>
+                            </div>
+                            <div class="emergency-details">
+                                <p><strong>River Flooding:</strong> Green River above flood stage at Auburn. Minor flooding expected along river corridor.</p>
+                                <div class="emergency-stats">
+                                    <span>🌊 Current: 12.3 ft</span>
+                                    <span>⚠️ Flood Stage: 11.5 ft</span>
+                                    <span>📍 Peak Expected: Tonight</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="emergency-item warning">
+                            <div class="emergency-header">
+                                <span class="emergency-location">Skagit County - Skagit River</span>
+                                <span class="emergency-severity warning">Flood Watch</span>
+                            </div>
+                            <div class="emergency-details">
+                                <p><strong>Rising Waters:</strong> Skagit River approaching action stage. Monitoring for potential flooding in low-lying areas.</p>
+                                <div class="emergency-stats">
+                                    <span>🌊 Current: 18.7 ft</span>
+                                    <span>⚠️ Action Stage: 22.0 ft</span>
+                                    <span>📈 Rising: 0.3 ft/hr</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="wa-state.js"></script>
+</body>
+</html>

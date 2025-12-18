@@ -16,6 +16,81 @@ body {
     overflow-x: hidden;
 }
 
+/* Top Navigation Bar */
+.top-navigation {
+    background: rgba(15, 23, 42, 0.98);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.nav-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 4rem;
+}
+
+.nav-logo h1 {
+    color: #f8fafc;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.nav-logo h1 i {
+    color: #3b82f6;
+}
+
+.nav-tabs {
+    display: flex;
+    gap: 0.5rem;
+    background: rgba(30, 41, 59, 0.6);
+    padding: 0.5rem;
+    border-radius: 20px;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.nav-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.2rem;
+    color: #94a3b8;
+    text-decoration: none;
+    border-radius: 15px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.nav-tab:hover {
+    color: #f1f5f9;
+    background: rgba(59, 130, 246, 0.2);
+    transform: translateY(-1px);
+}
+
+.nav-tab.active {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.nav-tab i {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
 .app-container {
     min-height: 100vh;
     display: flex;
@@ -29,8 +104,8 @@ body {
     padding: 0.75rem 0;
     text-align: center;
     position: sticky;
-    top: 0;
-    z-index: 200;
+    top: 4rem;
+    z-index: 190;
     box-shadow: 0 2px 10px rgba(220, 38, 38, 0.3);
     animation: emergencyPulse 3s infinite;
 }
@@ -88,7 +163,7 @@ body {
     border-bottom: 2px solid #dc2626;
     padding: 1.5rem 0;
     position: sticky;
-    top: 3rem;
+    top: 7rem;
     z-index: 100;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
@@ -455,7 +530,7 @@ body {
     flex-direction: column;
     gap: 2rem;
     position: sticky;
-    top: 8rem;
+    top: 12rem;
 }
 
 .panel-section {
@@ -1420,8 +1495,460 @@ select:focus {
     outline-offset: 2px;
 }
 
+/* Washington State Specific Styles */
+.wa-stats {
+    max-width: 1400px;
+    margin: 0 auto 2rem;
+    padding: 0 2rem;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1.5rem;
+}
+
+.washington-map {
+    height: 500px;
+    border-radius: 25px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(59, 130, 246, 0.3);
+    position: relative;
+}
+
+/* Historical Trends Styles */
+.historical-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.trend-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+    padding: 1rem;
+    background: rgba(51, 65, 85, 0.5);
+    border-radius: 15px;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    transition: all 0.3s ease;
+}
+
+.trend-item:hover {
+    transform: translateY(-2px);
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+.trend-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.trend-content {
+    flex: 1;
+}
+
+.trend-content strong {
+    color: #f1f5f9;
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 0.95rem;
+}
+
+.trend-content p {
+    color: #cbd5e0;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin-bottom: 0.4rem;
+    margin: 0;
+}
+
+.trend-content small {
+    color: #94a3b8;
+    font-size: 0.75rem;
+}
+
+/* County Summary Table */
+.county-summary-table {
+    background: rgba(51, 65, 85, 0.3);
+    border-radius: 15px;
+    overflow: hidden;
+    border: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+.table-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1.5fr 1fr;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    background: rgba(59, 130, 246, 0.1);
+    border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+    font-weight: 600;
+    color: #93c5fd;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.table-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1.5fr 1fr;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.table-row:hover {
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.table-row:last-child {
+    border-bottom: none;
+}
+
+.county-name {
+    color: #f1f5f9;
+    font-weight: 600;
+}
+
+.trend {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.trend.up {
+    color: #ef4444;
+}
+
+.trend.stable {
+    color: #3b82f6;
+}
+
+.trend.down {
+    color: #10b981;
+}
+
+.rivers {
+    color: #cbd5e0;
+    font-size: 0.85rem;
+}
+
+.population {
+    color: #94a3b8;
+    font-size: 0.85rem;
+    text-align: right;
+}
+
+/* Counties Grid Layout */
+.counties-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+    padding: 1rem;
+}
+
+.county-card {
+    background: rgba(30, 41, 59, 0.8);
+    border-radius: 20px;
+    padding: 1.5rem;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.county-card.high-risk {
+    border-color: rgba(239, 68, 68, 0.3);
+    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.1);
+}
+
+.county-card.moderate-risk {
+    border-color: rgba(245, 158, 11, 0.3);
+    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.1);
+}
+
+.county-card.low-risk {
+    border-color: rgba(59, 130, 246, 0.3);
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1);
+}
+
+.county-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.county-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.county-header h3 {
+    color: #f1f5f9;
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.risk-badge {
+    padding: 0.4rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.risk-badge.high {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border: 1px solid #ef4444;
+}
+
+.risk-badge.moderate {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fde68a;
+    border: 1px solid #f59e0b;
+}
+
+.risk-badge.low {
+    background: rgba(59, 130, 246, 0.2);
+    color: #93c5fd;
+    border: 1px solid #3b82f6;
+}
+
+.county-stats {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.county-stats .stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem;
+    background: rgba(51, 65, 85, 0.5);
+    border-radius: 10px;
+}
+
+.county-stats .label {
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+.county-stats .value {
+    color: #f1f5f9;
+    font-weight: 600;
+}
+
+.county-stats .value.trend-up {
+    color: #ef4444;
+}
+
+.county-stats .value.trend-stable {
+    color: #3b82f6;
+}
+
+.major-rivers h4 {
+    color: #cbd5e0;
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.river-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.river-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem;
+    background: rgba(51, 65, 85, 0.5);
+    border-radius: 10px;
+}
+
+.river-name {
+    color: #f1f5f9;
+    font-weight: 500;
+}
+
+.river-status {
+    padding: 0.3rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.river-status.warning {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fde68a;
+}
+
+.river-status.normal {
+    background: rgba(16, 185, 129, 0.2);
+    color: #86efac;
+}
+
+.river-status.watch {
+    background: rgba(59, 130, 246, 0.2);
+    color: #93c5fd;
+}
+
+.river-status.critical {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+}
+
+/* Rivers Tab Styles */
+.rivers-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.river-systems-list {
+    background: rgba(51, 65, 85, 0.5);
+    border-radius: 20px;
+    padding: 1.5rem;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.river-status-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.river-status-item {
+    background: rgba(30, 41, 59, 0.6);
+    border-radius: 15px;
+    padding: 1.5rem;
+    border-left: 4px solid;
+}
+
+.river-status-item.critical {
+    border-left-color: #dc2626;
+}
+
+.river-status-item.warning {
+    border-left-color: #f59e0b;
+}
+
+.river-status-item.normal {
+    border-left-color: #10b981;
+}
+
+.river-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.river-header .river-name {
+    color: #f1f5f9;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.status-badge {
+    padding: 0.4rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.status-badge.critical {
+    background: rgba(220, 38, 38, 0.2);
+    color: #fca5a5;
+}
+
+.status-badge.warning {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fde68a;
+}
+
+.status-badge.normal {
+    background: rgba(16, 185, 129, 0.2);
+    color: #86efac;
+}
+
+.river-details {
+    color: #cbd5e0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.gauge-reading {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.river-details .trend {
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+/* Forecast Styles */
+.forecast-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+}
+
+.forecast-summary {
+    background: rgba(51, 65, 85, 0.5);
+    border-radius: 20px;
+    padding: 1.5rem;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.forecast-items {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.forecast-item {
+    background: rgba(30, 41, 59, 0.6);
+    border-radius: 15px;
+    padding: 1.2rem;
+    border: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+.forecast-date {
+    color: #93c5fd;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.forecast-condition {
+    color: #f1f5f9;
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.forecast-details {
+    color: #cbd5e0;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
 /* Print styles */
 @media print {
+    .top-navigation,
     .emergency-banner,
     .header,
     .side-panel {
