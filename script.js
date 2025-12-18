@@ -1,1265 +1,1136 @@
-// FloodWatch WA Dashboard JavaScript
-// Washington State Flood Risk Monitoring & Early Warning System
-// Integrates King County flood warning data, NOAA rainfall data, and USGS streamflow data
+// FloodPlan Global - Worldwide Flood Risk Assessment Platform
+// Interactive World Map and Emergency Response System
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize the dashboard
-    initializeDashboard();
-    setupLocationSelector();
-    setupTabNavigation();
-    loadCurrentCountyData();
-});
+// Global variables
+let worldMap;
+let currentLayer = 'risk';
+let currentTimeframe = 'current';
+let emergencyMarkers = [];
+let riskPolygons = [];
+let updateInterval;
 
-// Washington Counties Database with coordinates
-const WA_COUNTIES = {
-    'king': { name: 'King County', lat: 47.5482, lon: -121.9836, state: 'Washington' },
-    'pierce': { name: 'Pierce County', lat: 47.0676, lon: -122.1295, state: 'Washington' },
-    'snohomish': { name: 'Snohomish County', lat: 47.9073, lon: -121.7705, state: 'Washington' },
-    'thurston': { name: 'Thurston County', lat: 47.0417, lon: -122.8959, state: 'Washington' },
-    'kitsap': { name: 'Kitsap County', lat: 47.6417, lon: -122.6746, state: 'Washington' },
-    'clark': { name: 'Clark County', lat: 45.7466, lon: -122.4885, state: 'Washington' },
-    'skagit': { name: 'Skagit County', lat: 48.4067, lon: -121.4158, state: 'Washington' },
-    'whatcom': { name: 'Whatcom County', lat: 48.7519, lon: -121.7705, state: 'Washington' }
-};
-
-// Current application state
-let currentCounty = 'king';
-let currentData = {
-    floodRisk: null,
-    rainfall: null,
-    riverLevel: null,
-    streamflow: null,
-    soilSaturation: null,
-    lastUpdated: null
-};
-
-// Chart instances
-let charts = {};
-
-// API Configuration for flood and weather data
-const API_CONFIG = {
-    // NOAA National Weather Service - Free, no key required
-    noaa: 'https://api.weather.gov',
-    
-    // USGS Water Services - Free, no key required  
-    usgs: 'https://waterservices.usgs.gov/nwis/iv',
-    
-    // Open-Meteo for Weather - Free, no key required
-    openMeteo: 'https://api.open-meteo.com/v1/forecast',
-    
-    // King County Open Data (would need proper endpoints in real implementation)
-    kingCounty: 'https://kingcounty.gov/services/environment/water-and-land/flooding',
-    
-    // Alternative weather APIs for fallback
-    weatherAPI: 'https://api.openweathermap.org/data/2.5'
-};
-
-// USGS Stream Gauges for Washington State (real gauge IDs)
-const USGS_STREAM_GAUGES = {
-    'king': [
-        '12113000', // Green River at Auburn
-        '12119000', // Cedar River at Renton  
-        '12144500', // South Fork Skykomish River
-        '12121600'  // Lake Washington Ship Canal
-    ],
-    'pierce': [
-        '12093500', // Puyallup River at Puyallup
-        '12089500', // White River near Auburn
-        '12101500'  // Nisqually River at McKenna
-    ],
-    'snohomish': [
-        '12134500', // Snohomish River near Monroe
-        '12144500', // South Fork Skykomish River
-        '12150800'  // Stillaguamish River near Arlington
-    ],
-    'thurston': [
-        '12089500', // Nisqually River at McKenna
-        '12079000'  // Deschutes River at Rainier
-    ],
-    'clark': [
-        '14144800', // Lewis River at Ariel
-        '14246900'  // Columbia River at Vancouver
-    ],
-    'skagit': [
-        '12200500', // Skagit River near Concrete
-        '12175500'  // Sauk River near Sauk
-    ],
-    'whatcom': [
-        '12213100', // Nooksack River at Ferndale
-        '12210700'  // South Fork Nooksack River
-    ],
-    'kitsap': [
-        '12121600', // Lake Washington Ship Canal
-        '12079000'  // Deschutes River at Rainier
+// Flood risk data simulation (in a real application, this would come from APIs)
+const globalFloodData = {
+    regions: {
+        'asia-pacific': {
+            name: 'Asia-Pacific',
+            center: [35, 105],
+            risk: 'extreme',
+            affected: 847000,
+            activeFloods: 12,
+            description: 'Monsoon season causing widespread flooding across river systems',
+            details: {
+                precipitation: '+45% above normal',
+                temperature: '+2.1°C',
+                riverLevels: 'Critical (>90% capacity)',
+                evacuations: '145,000 people',
+                shelters: 89,
+                rescueUnits: 67
+            }
+        },
+        'europe': {
+            name: 'Europe',
+            center: [54, 15],
+            risk: 'high',
+            affected: 234000,
+            activeFloods: 6,
+            description: 'Alpine snowmelt raising river levels across major watersheds',
+            details: {
+                precipitation: '+15% above normal',
+                temperature: '+1.8°C',
+                riverLevels: 'High (75-85% capacity)',
+                evacuations: '23,000 people',
+                shelters: 34,
+                rescueUnits: 28
+            }
+        },
+        'south-america': {
+            name: 'South America',
+            center: [-15, -60],
+            risk: 'moderate',
+            affected: 156000,
+            activeFloods: 3,
+            description: 'Seasonal rainfall patterns with localized flooding',
+            details: {
+                precipitation: '+8% above normal',
+                temperature: '+1.2°C',
+                riverLevels: 'Moderate (60-70% capacity)',
+                evacuations: '12,000 people',
+                shelters: 18,
+                rescueUnits: 15
+            }
+        },
+        'africa': {
+            name: 'Africa',
+            center: [0, 20],
+            risk: 'moderate',
+            affected: 98000,
+            activeFloods: 2,
+            description: 'Irregular rainfall patterns affecting drought-recovery areas',
+            details: {
+                precipitation: '-5% below normal',
+                temperature: '+1.5°C',
+                riverLevels: 'Normal (45-55% capacity)',
+                evacuations: '8,000 people',
+                shelters: 12,
+                rescueUnits: 8
+            }
+        },
+        'north-america': {
+            name: 'North America',
+            center: [45, -100],
+            risk: 'low',
+            affected: 45000,
+            activeFloods: 0,
+            description: 'Stable conditions with normal seasonal patterns',
+            details: {
+                precipitation: '-10% below normal',
+                temperature: '+0.8°C',
+                riverLevels: 'Low (30-40% capacity)',
+                evacuations: '0 people',
+                shelters: 5,
+                rescueUnits: 3
+            }
+        }
+    },
+    emergencyZones: [
+        {
+            location: [23.8, 90.3],
+            name: 'Bangladesh Delta',
+            severity: 'critical',
+            type: 'monsoon',
+            affected: 500000,
+            description: 'Extreme monsoon flooding in Brahmaputra basin'
+        },
+        {
+            location: [50.1, 8.7],
+            name: 'Rhine Valley',
+            severity: 'warning',
+            type: 'snowmelt',
+            affected: 150000,
+            description: 'Rapid snowmelt causing river level rise'
+        },
+        {
+            location: [-27.5, 153.0],
+            name: 'Queensland Coast',
+            severity: 'watch',
+            type: 'cyclone',
+            affected: 300000,
+            description: 'Tropical cyclone approaching with flood potential'
+        }
     ]
 };
 
-// Dashboard initialization
-function initializeDashboard() {
-    updateLastUpdated();
-    animateMetrics();
-    checkFloodAlerts();
-    console.log('🌊 FloodWatch WA Dashboard initialized');
-    console.log('📊 Ready to fetch real-time flood and weather data');
-}
-
-// Setup location selector functionality
-function setupLocationSelector() {
-    const countySelect = document.getElementById('countySelect');
-    const updateButton = document.getElementById('updateLocation');
-    
-    updateButton.addEventListener('click', () => {
-        const selectedCounty = countySelect.value;
-        if (selectedCounty !== currentCounty) {
-            currentCounty = selectedCounty;
-            updateCurrentCountyDisplay();
-            loadCurrentCountyData();
-        }
-    });
-    
-    // Also update on select change
-    countySelect.addEventListener('change', () => {
-        const selectedCounty = countySelect.value;
-        if (selectedCounty !== currentCounty) {
-            currentCounty = selectedCounty;
-            updateCurrentCountyDisplay();
-            loadCurrentCountyData();
-        }
-    });
-}
-
-// Update current county display
-function updateCurrentCountyDisplay() {
-    const countyInfo = WA_COUNTIES[currentCounty];
-    document.getElementById('currentCounty').textContent = countyInfo.name + ', WA';
-    document.getElementById('countySelect').value = currentCounty;
-}
-
-// Load data for current county
-async function loadCurrentCountyData() {
-    const countyInfo = WA_COUNTIES[currentCounty];
-    console.log(`🔄 Loading flood data for ${countyInfo.name}...`);
-    
-    showLoadingState();
-    
-    try {
-        // Fetch all data concurrently
-        const [weatherData, streamflowData, floodRiskData] = await Promise.all([
-            fetchWeatherData(countyInfo),
-            fetchStreamflowData(countyInfo),
-            generateFloodRiskAssessment(countyInfo)
-        ]);
-        
-        // Update current metrics
-        updateCurrentMetrics(weatherData, streamflowData, floodRiskData);
-        
-        // Initialize/update charts
-        updateCharts(weatherData, streamflowData, floodRiskData);
-        
-        // Update map
-        updateFloodMap(countyInfo, floodRiskData);
-        
-        // Check for alerts
-        checkFloodAlerts();
-        
-        updateLastUpdated();
-        hideLoadingState();
-        
-        console.log(`✅ Data loaded successfully for ${countyInfo.name}`);
-        
-    } catch (error) {
-        console.error(`❌ Error loading data for ${countyInfo.name}:`, error);
-        loadFallbackData(countyInfo);
-    }
-}
-
-// Fetch real-time weather data from Open-Meteo
-async function fetchWeatherData(countyInfo) {
-    try {
-        const response = await fetch(
-            `${API_CONFIG.openMeteo}?` +
-            `latitude=${countyInfo.lat}&` +
-            `longitude=${countyInfo.lon}&` +
-            `current=temperature_2m,relative_humidity_2m,precipitation,weather_code&` +
-            `hourly=precipitation,temperature_2m&` +
-            `daily=precipitation_sum,temperature_2m_max,temperature_2m_min&` +
-            `temperature_unit=fahrenheit&` +
-            `precipitation_unit=inch&` +
-            `timezone=America/Los_Angeles&` +
-            `forecast_days=7`
-        );
-        
-        if (!response.ok) throw new Error('Weather API error');
-        
-        const data = await response.json();
-        
-        return {
-            current: {
-                temperature: Math.round(data.current.temperature_2m || 50),
-                humidity: data.current.relative_humidity_2m || 65,
-                precipitation: data.current.precipitation || 0,
-                weatherCode: data.current.weather_code || 1
-            },
-            hourly: {
-                time: data.hourly.time.slice(0, 24),
-                precipitation: data.hourly.precipitation.slice(0, 24),
-                temperature: data.hourly.temperature_2m.slice(0, 24)
-            },
-            daily: {
-                time: data.daily.time,
-                precipitation: data.daily.precipitation_sum,
-                temperatureMax: data.daily.temperature_2m_max,
-                temperatureMin: data.daily.temperature_2m_min
-            }
-        };
-        
-    } catch (error) {
-        console.warn('Weather API failed, using realistic sample data:', error);
-        return generateRealisticWeatherData(countyInfo);
-    }
-}
-
-// Fetch real-time streamflow data from USGS
-async function fetchStreamflowData(countyInfo) {
-    try {
-        const gauges = USGS_STREAM_GAUGES[currentCounty] || USGS_STREAM_GAUGES['king'];
-        const primaryGauge = gauges[0];
-        
-        const response = await fetch(
-            `${API_CONFIG.usgs}?` +
-            `format=json&` +
-            `sites=${primaryGauge}&` +
-            `parameterCd=00060&` + // Discharge (streamflow)
-            `period=P1D&` + // Last 1 day
-            `siteStatus=all`
-        );
-        
-        if (!response.ok) throw new Error('USGS API error');
-        
-        const data = await response.json();
-        
-        if (data.value && data.value.timeSeries && data.value.timeSeries.length > 0) {
-            const timeSeries = data.value.timeSeries[0];
-            const values = timeSeries.values[0].value;
-            
-            const latestValue = values[values.length - 1];
-            const streamflow = parseFloat(latestValue.value);
-            
-            return {
-                currentFlow: streamflow,
-                siteName: timeSeries.sourceInfo.siteName,
-                values: values.map(v => ({
-                    dateTime: v.dateTime,
-                    value: parseFloat(v.value)
-                }))
-            };
-        } else {
-            throw new Error('No streamflow data available');
-        }
-        
-    } catch (error) {
-        console.warn('USGS API failed, using realistic sample data:', error);
-        return generateRealisticStreamflowData(countyInfo);
-    }
-}
-
-// Generate flood risk assessment based on multiple factors
-function generateFloodRiskAssessment(countyInfo) {
-    return new Promise((resolve) => {
-        // Simulate complex flood risk calculation
-        setTimeout(() => {
-            const month = new Date().getMonth();
-            const isWinterStorm = month >= 10 || month <= 2; // Nov-Feb peak flood season
-            
-            // Base risk factors for each county
-            const baseRisk = {
-                'king': 65,      // High urban development, multiple rivers
-                'pierce': 58,    // Mount Rainier watersheds
-                'snohomish': 62, // Snohomish River basin
-                'thurston': 45,  // Lower elevation, some flood plains
-                'clark': 52,     // Columbia River influence
-                'skagit': 70,    // Skagit River, mountain watersheds
-                'whatcom': 68,   // Nooksack River, close to mountains
-                'kitsap': 40     // Peninsula, less flood-prone
-            };
-            
-            let riskScore = baseRisk[currentCounty] || 50;
-            
-            // Adjust for seasonal factors
-            if (isWinterStorm) {
-                riskScore += 15; // Higher risk during storm season
-            }
-            
-            // Add some variability
-            riskScore += Math.random() * 20 - 10;
-            riskScore = Math.max(0, Math.min(100, riskScore));
-            
-            const assessment = {
-                overallRisk: Math.round(riskScore),
-                riskLevel: getRiskLevel(riskScore),
-                factors: {
-                    precipitation: Math.random() * 3, // inches in last 24h
-                    soilSaturation: 60 + Math.random() * 30,
-                    riverLevel: 6 + Math.random() * 4,
-                    snowpack: isWinterStorm ? 90 + Math.random() * 40 : 50 + Math.random() * 30
-                },
-                forecast: generateRiskForecast()
-            };
-            
-            resolve(assessment);
-        }, 500);
-    });
-}
-
-// Generate 7-day risk forecast
-function generateRiskForecast() {
-    const forecast = [];
-    const days = ['Today', 'Tomorrow', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    
-    let baseRisk = 40 + Math.random() * 30; // Starting risk level
-    
-    for (let i = 0; i < 7; i++) {
-        // Add some trend and variability
-        baseRisk += (Math.random() - 0.5) * 20;
-        baseRisk = Math.max(10, Math.min(90, baseRisk));
-        
-        const risk = Math.round(baseRisk);
-        
-        forecast.push({
-            day: days[i] || new Date(Date.now() + i * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { weekday: 'short' }),
-            risk: risk,
-            riskLevel: getRiskLevel(risk),
-            precipitation: Math.random() * 2.5,
-            description: getRiskDescription(risk)
-        });
-    }
-    
-    return forecast;
-}
-
-// Update current metrics display
-function updateCurrentMetrics(weatherData, streamflowData, floodRiskData) {
-    // Flood Risk
-    if (floodRiskData) {
-        animateCounter('floodRiskValue', floodRiskData.overallRisk);
-        updateRiskStatus(floodRiskData.riskLevel);
-    }
-    
-    // Rainfall
-    if (weatherData && weatherData.current) {
-        const currentRainfall = weatherData.current.precipitation * 10; // Convert to realistic hourly rate
-        animateCounter('rainfallValue', currentRainfall.toFixed(1));
-        document.querySelector('.rainfall .metric-description').textContent = 
-            'Current precipitation rate';
-    }
-    
-    // River Level
-    if (floodRiskData && floodRiskData.factors) {
-        animateCounter('riverLevelValue', floodRiskData.factors.riverLevel.toFixed(1));
-        const level = floodRiskData.factors.riverLevel;
-        const status = level > 8 ? 'Above flood stage' : level > 6 ? 'Above normal stage' : 'Normal range';
-        document.querySelector('.river-level .metric-description').textContent = status;
-    }
-    
-    // Streamflow
-    if (streamflowData) {
-        animateCounter('streamflowValue', streamflowData.currentFlow.toLocaleString());
-        document.querySelector('.streamflow .metric-description').textContent = 
-            'Cubic feet per second';
-    }
-    
-    // Soil Saturation
-    if (floodRiskData && floodRiskData.factors) {
-        animateCounter('soilSatValue', Math.round(floodRiskData.factors.soilSaturation));
-        const saturation = floodRiskData.factors.soilSaturation;
-        const description = saturation > 80 ? 'High saturation' : 
-                           saturation > 60 ? 'Moderate saturation' : 'Low saturation';
-        document.querySelector('.soil-saturation .metric-description').textContent = description;
-    }
-}
-
-// Update charts with new data
-function updateCharts(weatherData, streamflowData, floodRiskData) {
-    updateRainfallChart(weatherData);
-    updateRiverLevelChart(streamflowData);
-    updateForecastCharts(floodRiskData);
-}
-
-// Update rainfall chart
-function updateRainfallChart(weatherData) {
-    const ctx = document.getElementById('rainfallChart');
-    if (!ctx) return;
-    
-    if (charts.rainfall) {
-        charts.rainfall.destroy();
-    }
-    
-    // Process last 24 hours of precipitation data
-    const labels = [];
-    const precipData = [];
-    
-    if (weatherData && weatherData.hourly) {
-        for (let i = 0; i < 24; i++) {
-            const hour = new Date(Date.now() - (24 - i) * 60 * 60 * 1000);
-            labels.push(hour.getHours() + ':00');
-            
-            const precip = weatherData.hourly.precipitation[i] || Math.random() * 0.5;
-            precipData.push(precip);
-        }
-    }
-    
-    charts.rainfall = new Chart(ctx.getContext('2d'), {
-        type: 'bar',
+// Chart data for global visualizations
+const chartConfigs = {
+    globalFlood: {
+        type: 'doughnut',
         data: {
-            labels: labels,
+            labels: ['Extreme Risk', 'High Risk', 'Moderate Risk', 'Low Risk', 'Minimal Risk'],
             datasets: [{
-                label: 'Precipitation (inches)',
-                data: precipData,
-                backgroundColor: 'rgba(52, 152, 219, 0.6)',
-                borderColor: '#3498db',
-                borderWidth: 2
+                data: [12, 18, 28, 25, 17],
+                backgroundColor: [
+                    '#dc2626', '#ef4444', '#f59e0b', '#3b82f6', '#10b981'
+                ],
+                borderWidth: 0
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
             plugins: {
+                legend: {
+                    position: 'right',
+                    labels: { color: '#cbd5e0', font: { size: 11 } }
+                },
                 title: {
                     display: true,
-                    text: `24-Hour Precipitation - ${WA_COUNTIES[currentCounty].name}`,
-                    color: '#2d3748',
-                    font: { size: 14, weight: 'bold' }
-                },
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: 'rgba(45, 55, 72, 0.9)',
-                    titleColor: '#fff',
-                    bodyColor: '#fff',
-                    callbacks: {
-                        label: function(context) {
-                            return `${context.parsed.y.toFixed(2)}" rain`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(0,0,0,0.1)' },
-                    ticks: { 
-                        color: '#666',
-                        callback: function(value) {
-                            return value.toFixed(1) + '"';
-                        }
-                    }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#666', maxTicksLimit: 8 }
+                    text: 'Global Risk Distribution',
+                    color: '#f1f5f9'
                 }
             }
         }
-    });
-}
-
-// Update river level chart
-function updateRiverLevelChart(streamflowData) {
-    const ctx = document.getElementById('riverLevelChart');
-    if (!ctx) return;
-    
-    if (charts.riverLevel) {
-        charts.riverLevel.destroy();
-    }
-    
-    // Process streamflow data to show trend
-    const labels = [];
-    const levelData = [];
-    
-    if (streamflowData && streamflowData.values) {
-        const recentValues = streamflowData.values.slice(-24); // Last 24 readings
-        
-        recentValues.forEach((value, index) => {
-            const date = new Date(value.dateTime);
-            labels.push(date.getHours() + ':' + date.getMinutes().toString().padStart(2, '0'));
-            // Convert cubic feet per second to approximate feet (simplified)
-            const level = Math.log10(value.value + 1) * 2; 
-            levelData.push(level);
-        });
-    } else {
-        // Generate sample data if no real data available
-        for (let i = 0; i < 24; i++) {
-            const hour = new Date(Date.now() - (24 - i) * 60 * 60 * 1000);
-            labels.push(hour.getHours() + ':00');
-            levelData.push(6 + Math.sin(i * 0.3) * 2 + Math.random() * 0.5);
-        }
-    }
-    
-    charts.riverLevel = new Chart(ctx.getContext('2d'), {
+    },
+    precipitation: {
         type: 'line',
         data: {
-            labels: labels,
-            datasets: [{
-                label: 'River Level (feet)',
-                data: levelData,
-                borderColor: '#2980b9',
-                backgroundColor: 'rgba(41, 128, 185, 0.1)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: '#2980b9',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 4
-            }]
+            labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+            datasets: [
+                {
+                    label: 'Global Average (mm/hr)',
+                    data: [2.1, 1.8, 1.5, 1.2, 0.9, 1.1, 1.8, 2.4, 3.2, 4.1, 5.2, 6.8, 
+                           7.2, 6.9, 5.5, 4.8, 4.2, 3.9, 3.5, 3.1, 2.8, 2.5, 2.3, 2.2],
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Critical Threshold',
+                    data: Array(24).fill(5.0),
+                    borderColor: '#dc2626',
+                    borderDash: [5, 5],
+                    fill: false
+                }
+            ]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: `River Level Monitoring - ${WA_COUNTIES[currentCounty].name}`,
-                    color: '#2d3748',
-                    font: { size: 14, weight: 'bold' }
-                },
-                legend: { display: false }
-            },
             scales: {
-                y: {
-                    grid: { color: 'rgba(0,0,0,0.1)' },
-                    ticks: { 
-                        color: '#666',
-                        callback: function(value) {
-                            return value.toFixed(1) + ' ft';
-                        }
-                    }
+                y: { 
+                    beginAtZero: true,
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: 'rgba(148, 163, 184, 0.1)' }
                 },
-                x: {
-                    grid: { color: 'rgba(0,0,0,0.1)' },
-                    ticks: { color: '#666', maxTicksLimit: 8 }
+                x: { 
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: 'rgba(148, 163, 184, 0.1)' }
                 }
             },
-            animation: {
-                duration: 1500,
-                easing: 'easeInOutQuart'
+            plugins: {
+                legend: { 
+                    labels: { color: '#cbd5e0' }
+                }
+            }
+        }
+    }
+};
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🌊 FloodPlan Global - Initializing...');
+    
+    try {
+        initializeGlobalMap();
+        setupEventListeners();
+        initializeCharts();
+        updateGlobalStatistics();
+        startDataUpdateInterval();
+        setupTabNavigation();
+        
+        console.log('✅ FloodPlan Global - Initialization complete');
+    } catch (error) {
+        console.error('❌ Initialization error:', error);
+        showNotification('System initialization failed. Please refresh the page.', 'error');
+    }
+});
+
+// Initialize the world map with Leaflet
+function initializeGlobalMap() {
+    // Initialize the map centered on the world
+    worldMap = L.map('worldMap', {
+        center: [20, 0],
+        zoom: 2,
+        minZoom: 2,
+        maxZoom: 10,
+        zoomControl: true,
+        scrollWheelZoom: true,
+        doubleClickZoom: true
+    });
+
+    // Add base tile layer with dark theme
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
+    }).addTo(worldMap);
+
+    // Add risk overlay layers
+    addRiskOverlays();
+    addEmergencyMarkers();
+
+    // Set up map interactions
+    worldMap.on('click', onMapClick);
+    worldMap.on('zoomend', onMapZoom);
+
+    console.log('🗺️ World map initialized');
+}
+
+// Add risk overlay polygons to the map
+function addRiskOverlays() {
+    // Define risk polygons for major regions
+    const riskPolygonData = [
+        {
+            name: 'Bangladesh-India Delta',
+            coordinates: [[20, 85], [26, 85], [26, 95], [20, 95]],
+            risk: 'extreme',
+            popup: 'Critical: Monsoon flooding affecting millions'
+        },
+        {
+            name: 'Central Europe Rivers',
+            coordinates: [[45, 5], [55, 5], [55, 20], [45, 20]],
+            risk: 'high',
+            popup: 'Warning: Alpine snowmelt raising river levels'
+        },
+        {
+            name: 'Amazon Basin',
+            coordinates: [[-10, -70], [5, -70], [5, -50], [-10, -50]],
+            risk: 'moderate',
+            popup: 'Watch: Seasonal flooding in river basin'
+        },
+        {
+            name: 'Queensland Coast',
+            coordinates: [[-30, 145], [-20, 145], [-20, 155], [-30, 155]],
+            risk: 'high',
+            popup: 'Warning: Cyclone approach with flood potential'
+        }
+    ];
+
+    riskPolygonData.forEach(polygon => {
+        const coords = polygon.coordinates.map(coord => [coord[0], coord[1]]);
+        
+        const riskPolygon = L.polygon(coords, {
+            fillColor: getRiskColor(polygon.risk),
+            weight: 2,
+            opacity: 0.8,
+            color: getRiskColor(polygon.risk),
+            fillOpacity: 0.3
+        }).addTo(worldMap);
+
+        riskPolygon.bindPopup(`
+            <div style="font-family: 'Inter', sans-serif; max-width: 250px;">
+                <h4 style="margin: 0 0 0.5rem 0; color: ${getRiskColor(polygon.risk)}; font-size: 1rem;">
+                    ${polygon.name}
+                </h4>
+                <p style="margin: 0; font-size: 0.9rem; line-height: 1.4;">
+                    ${polygon.popup}
+                </p>
+            </div>
+        `);
+
+        riskPolygons.push(riskPolygon);
+    });
+}
+
+// Add emergency markers to the map
+function addEmergencyMarkers() {
+    globalFloodData.emergencyZones.forEach(zone => {
+        const marker = createEmergencyMarker(zone);
+        emergencyMarkers.push(marker);
+    });
+}
+
+// Create custom emergency marker
+function createEmergencyMarker(zone) {
+    const iconHtml = `
+        <div style="
+            background: ${getEmergencyColor(zone.severity)};
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            animation: pulse 2s infinite;
+        ">🚨</div>
+    `;
+
+    const customIcon = L.divIcon({
+        html: iconHtml,
+        className: 'custom-emergency-marker',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+    });
+
+    const marker = L.marker(zone.location, { icon: customIcon }).addTo(worldMap);
+
+    marker.bindPopup(`
+        <div style="font-family: 'Inter', sans-serif; max-width: 300px;">
+            <h4 style="margin: 0 0 0.5rem 0; color: ${getEmergencyColor(zone.severity)}; font-size: 1.1rem;">
+                ${zone.name} - ${zone.severity.toUpperCase()}
+            </h4>
+            <p style="margin: 0 0 0.8rem 0; font-size: 0.9rem; line-height: 1.4;">
+                <strong>${zone.type.charAt(0).toUpperCase() + zone.type.slice(1)} Emergency:</strong> 
+                ${zone.description}
+            </p>
+            <div style="font-size: 0.8rem; color: #666;">
+                <div style="margin-bottom: 0.3rem;">👥 <strong>${zone.affected.toLocaleString()}</strong> people affected</div>
+                <div style="margin-bottom: 0.3rem;">📍 Coordinates: ${zone.location[0].toFixed(1)}°, ${zone.location[1].toFixed(1)}°</div>
+            </div>
+        </div>
+    `);
+
+    return marker;
+}
+
+// Get color based on risk level
+function getRiskColor(risk) {
+    const colors = {
+        'extreme': '#dc2626',
+        'high': '#ef4444',
+        'moderate': '#f59e0b',
+        'low': '#3b82f6',
+        'minimal': '#10b981'
+    };
+    return colors[risk] || '#94a3b8';
+}
+
+// Get color based on emergency severity
+function getEmergencyColor(severity) {
+    const colors = {
+        'critical': '#dc2626',
+        'warning': '#f59e0b',
+        'watch': '#3b82f6'
+    };
+    return colors[severity] || '#94a3b8';
+}
+
+// Handle map click events
+function onMapClick(e) {
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
+    
+    // Find the closest region
+    const region = findClosestRegion(lat, lng);
+    if (region) {
+        updateRegionInfo(region);
+        showRegionAnalysis(region);
+    }
+}
+
+// Find the closest region to clicked coordinates
+function findClosestRegion(lat, lng) {
+    let closestRegion = null;
+    let minDistance = Infinity;
+
+    Object.values(globalFloodData.regions).forEach(region => {
+        const distance = calculateDistance(lat, lng, region.center[0], region.center[1]);
+        if (distance < minDistance) {
+            minDistance = distance;
+            closestRegion = region;
+        }
+    });
+
+    return closestRegion;
+}
+
+// Calculate distance between two coordinates
+function calculateDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+// Update region information panel
+function updateRegionInfo(region) {
+    const regionInfoElement = document.getElementById('regionInfo');
+    
+    const riskBadge = `<span class="risk-level ${region.risk}">${region.risk.toUpperCase()}</span>`;
+    
+    regionInfoElement.innerHTML = `
+        <div class="region-details">
+            <div class="region-header">
+                <h4 style="color: #f1f5f9; margin-bottom: 0.8rem; font-size: 1.2rem;">
+                    ${region.name} Analysis ${riskBadge}
+                </h4>
+            </div>
+            
+            <div class="region-stats" style="margin-bottom: 1.5rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div style="background: rgba(51, 65, 85, 0.5); padding: 1rem; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: #f1f5f9; margin-bottom: 0.3rem;">
+                            ${region.affected.toLocaleString()}
+                        </div>
+                        <div style="font-size: 0.8rem; color: #94a3b8;">People Affected</div>
+                    </div>
+                    <div style="background: rgba(51, 65, 85, 0.5); padding: 1rem; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: #f1f5f9; margin-bottom: 0.3rem;">
+                            ${region.activeFloods}
+                        </div>
+                        <div style="font-size: 0.8rem; color: #94a3b8;">Active Floods</div>
+                    </div>
+                </div>
+            </div>
+
+            <p style="color: #cbd5e0; margin-bottom: 1.5rem; font-size: 0.9rem; line-height: 1.5;">
+                ${region.description}
+            </p>
+
+            <div class="detailed-metrics">
+                <h5 style="color: #f1f5f9; margin-bottom: 1rem;">Current Conditions</h5>
+                <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(59, 130, 246, 0.1);">
+                        <span style="color: #94a3b8; font-size: 0.85rem;">Precipitation</span>
+                        <span style="color: #f1f5f9; font-size: 0.85rem; font-weight: 600;">${region.details.precipitation}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(59, 130, 246, 0.1);">
+                        <span style="color: #94a3b8; font-size: 0.85rem;">Temperature Anomaly</span>
+                        <span style="color: #f1f5f9; font-size: 0.85rem; font-weight: 600;">${region.details.temperature}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(59, 130, 246, 0.1);">
+                        <span style="color: #94a3b8; font-size: 0.85rem;">River Levels</span>
+                        <span style="color: #f1f5f9; font-size: 0.85rem; font-weight: 600;">${region.details.riverLevels}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
+                        <span style="color: #94a3b8; font-size: 0.85rem;">Evacuations</span>
+                        <span style="color: #f1f5f9; font-size: 0.85rem; font-weight: 600;">${region.details.evacuations}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="response-summary" style="margin-top: 1.5rem; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-radius: 10px; border-left: 3px solid #3b82f6;">
+                <h6 style="color: #93c5fd; margin-bottom: 0.8rem;">Emergency Response</h6>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="color: #cbd5e0; font-size: 0.8rem;">🏠 Shelters Active</span>
+                    <span style="color: #f1f5f9; font-size: 0.8rem; font-weight: 600;">${region.details.shelters}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #cbd5e0; font-size: 0.8rem;">🚁 Rescue Units</span>
+                    <span style="color: #f1f5f9; font-size: 0.8rem; font-weight: 600;">${region.details.rescueUnits}</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Handle map zoom events
+function onMapZoom(e) {
+    const zoom = worldMap.getZoom();
+    
+    // Show/hide markers based on zoom level
+    emergencyMarkers.forEach(marker => {
+        if (zoom < 3) {
+            marker.setOpacity(0.7);
+        } else {
+            marker.setOpacity(1);
+        }
+    });
+}
+
+// Setup event listeners
+function setupEventListeners() {
+    // Time frame selector
+    const timeframeSelect = document.getElementById('riskTimeframe');
+    if (timeframeSelect) {
+        timeframeSelect.addEventListener('change', (e) => {
+            currentTimeframe = e.target.value;
+            updateMapData();
+            showNotification(`Switched to ${e.target.selectedOptions[0].text}`, 'info');
+        });
+    }
+
+    // Map layer controls
+    document.querySelectorAll('.map-control-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            // Update active state
+            document.querySelectorAll('.map-control-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            
+            currentLayer = e.target.dataset.layer;
+            updateMapLayer();
+            showNotification(`Switched to ${e.target.textContent} layer`, 'info');
+        });
+    });
+
+    // Emergency mode button
+    const emergencyBtn = document.getElementById('emergencyMode');
+    if (emergencyBtn) {
+        emergencyBtn.addEventListener('click', toggleEmergencyMode);
+    }
+
+    // Future predictions button
+    const predictionBtn = document.getElementById('togglePrediction');
+    if (predictionBtn) {
+        predictionBtn.addEventListener('click', togglePredictions);
+    }
+
+    // Emergency response buttons
+    setupEmergencyResponseButtons();
+}
+
+// Setup emergency response button handlers
+function setupEmergencyResponseButtons() {
+    const responseButtons = {
+        'evacuation': showEvacuationRoutes,
+        'shelters': showEmergencyShelters,
+        'rescue': showRescueUnits,
+        'supplies': showSupplyChains
+    };
+
+    Object.keys(responseButtons).forEach(type => {
+        const btn = document.querySelector(`.response-btn.${type}`);
+        if (btn) {
+            btn.addEventListener('click', responseButtons[type]);
+        }
+    });
+}
+
+// Initialize charts
+function initializeCharts() {
+    try {
+        // Global flood distribution chart
+        const globalFloodCtx = document.getElementById('globalFloodChart');
+        if (globalFloodCtx) {
+            new Chart(globalFloodCtx, chartConfigs.globalFlood);
+        }
+
+        // 24-hour precipitation chart
+        const precipitationCtx = document.getElementById('precipitationChart');
+        if (precipitationCtx) {
+            new Chart(precipitationCtx, chartConfigs.precipitation);
+        }
+
+        // Weekly precipitation chart (forecast tab)
+        const weeklyPrecipCtx = document.getElementById('weeklyPrecipitationChart');
+        if (weeklyPrecipCtx) {
+            createWeeklyPrecipitationChart(weeklyPrecipCtx);
+        }
+
+        // Climate factors chart
+        const climateFactorsCtx = document.getElementById('climateFactorsChart');
+        if (climateFactorsCtx) {
+            createClimateFactorsChart(climateFactorsCtx);
+        }
+
+        // Historical trends chart
+        const historicalTrendsCtx = document.getElementById('historicalTrendsChart');
+        if (historicalTrendsCtx) {
+            createHistoricalTrendsChart(historicalTrendsCtx);
+        }
+
+        // Climate impact chart
+        const climateImpactCtx = document.getElementById('climateImpactChart');
+        if (climateImpactCtx) {
+            createClimateImpactChart(climateImpactCtx);
+        }
+
+        console.log('📊 Charts initialized successfully');
+    } catch (error) {
+        console.error('❌ Chart initialization error:', error);
+    }
+}
+
+// Create weekly precipitation chart
+function createWeeklyPrecipitationChart(ctx) {
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [
+                {
+                    label: 'Predicted Precipitation (mm)',
+                    data: [12, 19, 24, 35, 28, 15, 8],
+                    backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                    borderColor: '#3b82f6',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Historical Average (mm)',
+                    data: [8, 12, 15, 18, 16, 10, 6],
+                    type: 'line',
+                    borderColor: '#94a3b8',
+                    borderDash: [5, 5],
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { 
+                    beginAtZero: true,
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                },
+                x: { 
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                }
+            },
+            plugins: {
+                legend: { 
+                    labels: { color: '#cbd5e0' }
+                }
             }
         }
     });
 }
 
-// Update forecast charts
-function updateForecastCharts(floodRiskData) {
-    updateRiskForecastDisplay(floodRiskData);
-    updatePrecipitationForecastChart(floodRiskData);
-    updateHistoricalCharts();
-}
-
-// Update risk forecast display
-function updateRiskForecastDisplay(floodRiskData) {
-    const forecastGrid = document.getElementById('riskForecastGrid');
-    if (!forecastGrid) return;
-    
-    forecastGrid.innerHTML = '';
-    
-    if (floodRiskData && floodRiskData.forecast) {
-        floodRiskData.forecast.forEach(dayForecast => {
-            const forecastItem = document.createElement('div');
-            forecastItem.className = 'risk-forecast-item';
-            
-            const riskEmoji = getRiskEmoji(dayForecast.risk);
-            const riskColor = getRiskColor(dayForecast.risk);
-            
-            forecastItem.innerHTML = `
-                <div class="forecast-day">${dayForecast.day}</div>
-                <div class="risk-level">${riskEmoji}</div>
-                <div class="risk-percentage" style="color: ${riskColor};">${dayForecast.risk}%</div>
-                <div class="risk-description">${dayForecast.description}</div>
-            `;
-            
-            forecastGrid.appendChild(forecastItem);
-        });
-    }
-}
-
-// Update precipitation forecast chart
-function updatePrecipitationForecastChart(floodRiskData) {
-    const ctx = document.getElementById('precipitationForecastChart');
-    if (!ctx) return;
-    
-    if (charts.precipitationForecast) {
-        charts.precipitationForecast.destroy();
-    }
-    
-    const labels = [];
-    const precipData = [];
-    const riskData = [];
-    
-    if (floodRiskData && floodRiskData.forecast) {
-        floodRiskData.forecast.forEach(dayForecast => {
-            labels.push(dayForecast.day);
-            precipData.push(dayForecast.precipitation);
-            riskData.push(dayForecast.risk);
-        });
-    }
-    
-    charts.precipitationForecast = new Chart(ctx.getContext('2d'), {
-        type: 'bar',
+// Create climate factors chart
+function createClimateFactorsChart(ctx) {
+    new Chart(ctx, {
+        type: 'radar',
         data: {
-            labels: labels,
+            labels: ['Temperature', 'Sea Level', 'Precipitation', 'Storm Intensity', 'Drought Risk', 'Snowpack'],
             datasets: [{
-                label: 'Precipitation (inches)',
-                data: precipData,
-                backgroundColor: 'rgba(52, 152, 219, 0.6)',
-                borderColor: '#3498db',
+                label: 'Current vs Historical',
+                data: [85, 78, 92, 88, 65, 72],
+                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                borderColor: '#ef4444',
                 borderWidth: 2,
-                yAxisID: 'y'
-            }, {
-                label: 'Flood Risk (%)',
-                data: riskData,
-                type: 'line',
-                borderColor: '#e74c3c',
-                backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                borderWidth: 3,
-                fill: false,
-                tension: 0.4,
-                yAxisID: 'y1'
+                pointBackgroundColor: '#ef4444'
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: '7-Day Precipitation vs Flood Risk',
-                    color: '#2d3748',
-                    font: { size: 14, weight: 'bold' }
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: 'rgba(148, 163, 184, 0.2)' },
+                    angleLines: { color: 'rgba(148, 163, 184, 0.2)' },
+                    pointLabels: { color: '#cbd5e0' }
                 }
             },
+            plugins: {
+                legend: { 
+                    labels: { color: '#cbd5e0' }
+                }
+            }
+        }
+    });
+}
+
+// Create historical trends chart
+function createHistoricalTrendsChart(ctx) {
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['2020', '2021', '2022', '2023', '2024'],
+            datasets: [
+                {
+                    label: 'Global Flood Events',
+                    data: [45, 52, 48, 61, 58],
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Economic Impact (Billions USD)',
+                    data: [23, 31, 28, 42, 38],
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
             scales: {
                 y: {
                     type: 'linear',
                     display: true,
                     position: 'left',
-                    grid: { color: 'rgba(0,0,0,0.1)' },
-                    ticks: { color: '#666' }
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: 'rgba(148, 163, 184, 0.1)' }
                 },
                 y1: {
                     type: 'linear',
                     display: true,
                     position: 'right',
-                    grid: { drawOnChartArea: false },
-                    ticks: { color: '#666' }
+                    ticks: { color: '#94a3b8' },
+                    grid: { drawOnChartArea: false }
                 },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#666' }
+                x: { 
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                }
+            },
+            plugins: {
+                legend: { 
+                    labels: { color: '#cbd5e0' }
                 }
             }
         }
     });
 }
 
-// Update historical charts
-function updateHistoricalCharts() {
-    updateHistoricalFloodsChart();
-    updateSeasonalRainfallChart();
-}
-
-// Update historical floods chart
-function updateHistoricalFloodsChart() {
-    const ctx = document.getElementById('historicalFloodsChart');
-    if (!ctx) return;
-    
-    if (charts.historicalFloods) {
-        charts.historicalFloods.destroy();
-    }
-    
-    const years = ['2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024'];
-    const floodEvents = [3, 5, 2, 4, 7, 8, 4, 6, 9, 5]; // Sample data showing increasing trend
-    
-    charts.historicalFloods = new Chart(ctx.getContext('2d'), {
+// Create climate impact chart
+function createClimateImpactChart(ctx) {
+    new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: years,
+            labels: ['Sea Level Rise', 'Temperature Increase', 'Extreme Precipitation', 'Storm Intensity', 'Seasonal Shift'],
             datasets: [{
-                label: 'Major Flood Events',
-                data: floodEvents,
-                backgroundColor: 'rgba(231, 76, 60, 0.6)',
-                borderColor: '#e74c3c',
-                borderWidth: 2
+                label: 'Impact Factor (0-100)',
+                data: [85, 78, 92, 75, 68],
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.6)',
+                    'rgba(239, 68, 68, 0.6)',
+                    'rgba(34, 197, 94, 0.6)',
+                    'rgba(245, 158, 11, 0.6)',
+                    'rgba(168, 85, 247, 0.6)'
+                ],
+                borderColor: [
+                    '#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#a855f7'
+                ],
+                borderWidth: 1
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Annual Major Flood Events in Washington State',
-                    color: '#2d3748',
-                    font: { size: 14, weight: 'bold' }
-                }
-            },
             scales: {
-                y: {
+                y: { 
                     beginAtZero: true,
-                    grid: { color: 'rgba(0,0,0,0.1)' },
-                    ticks: { 
-                        color: '#666',
-                        stepSize: 1
-                    }
+                    max: 100,
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: 'rgba(148, 163, 184, 0.1)' }
                 },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#666' }
-                }
-            }
-        }
-    });
-}
-
-// Update seasonal rainfall chart
-function updateSeasonalRainfallChart() {
-    const ctx = document.getElementById('seasonalRainfallChart');
-    if (!ctx) return;
-    
-    if (charts.seasonalRainfall) {
-        charts.seasonalRainfall.destroy();
-    }
-    
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const normalRainfall = [5.1, 4.2, 3.8, 2.4, 1.9, 1.1, 0.8, 0.9, 1.6, 3.4, 5.6, 5.9]; // Typical WA pattern
-    const currentYearRainfall = normalRainfall.map(val => val * (0.8 + Math.random() * 0.4)); // Some variation
-    
-    charts.seasonalRainfall = new Chart(ctx.getContext('2d'), {
-        type: 'line',
-        data: {
-            labels: months,
-            datasets: [{
-                label: 'Normal (30-year average)',
-                data: normalRainfall,
-                borderColor: '#3498db',
-                backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                borderWidth: 2,
-                fill: false
-            }, {
-                label: '2024 Actual',
-                data: currentYearRainfall,
-                borderColor: '#e74c3c',
-                backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                borderWidth: 2,
-                fill: false
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Seasonal Precipitation Patterns',
-                    color: '#2d3748',
-                    font: { size: 14, weight: 'bold' }
+                x: { 
+                    ticks: { color: '#94a3b8', maxRotation: 45 },
+                    grid: { color: 'rgba(148, 163, 184, 0.1)' }
                 }
             },
-            scales: {
-                y: {
-                    grid: { color: 'rgba(0,0,0,0.1)' },
-                    ticks: { 
-                        color: '#666',
-                        callback: function(value) {
-                            return value.toFixed(1) + '"';
-                        }
-                    }
-                },
-                x: {
-                    grid: { color: 'rgba(0,0,0,0.1)' },
-                    ticks: { color: '#666' }
+            plugins: {
+                legend: { 
+                    display: false
                 }
             }
         }
     });
 }
 
-// Initialize Washington State flood risk map
-function initializeFloodMap() {
-    // Clear existing map if it exists
-    if (window.floodMap) {
-        window.floodMap.remove();
-    }
-    
-    // Initialize map centered on Washington State
-    window.floodMap = L.map('map').setView([47.7511, -120.7401], 7);
-    
-    // Add tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(window.floodMap);
-    
-    // Add county markers with flood risk data
-    Object.entries(WA_COUNTIES).forEach(([countyKey, countyInfo]) => {
-        addCountyMarker(countyInfo, countyKey);
+// Setup tab navigation
+function setupTabNavigation() {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const targetTab = e.currentTarget.dataset.tab;
+            switchTab(targetTab);
+        });
     });
-    
-    // Add legend
-    addFloodMapLegend();
 }
 
-// Add individual county marker with flood risk data
-function addCountyMarker(countyInfo, countyKey) {
-    const countyRisk = generateCountyRiskLevel(countyKey);
-    const markerColor = getRiskColor(countyRisk);
-    const isCurrentCounty = countyKey === currentCounty;
-    
-    // Create marker with size indicating current selection
-    const markerSize = isCurrentCounty ? 25 : 20;
-    const borderWidth = isCurrentCounty ? 3 : 2;
-    
-    const icon = L.divIcon({
-        className: 'custom-flood-marker',
-        html: `<div style="background-color: ${markerColor}; width: ${markerSize}px; height: ${markerSize}px; border-radius: 50%; border: ${borderWidth}px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4); position: relative;">
-                ${isCurrentCounty ? '<div style="position: absolute; top: -3px; right: -3px; background: #f39c12; width: 8px; height: 8px; border-radius: 50%; border: 1px solid white;"></div>' : ''}
-               </div>`,
-        iconSize: [markerSize, markerSize],
-        iconAnchor: [markerSize/2, markerSize/2]
+// Switch between tabs
+function switchTab(tabName) {
+    // Update button states
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.tab === tabName) {
+            btn.classList.add('active');
+        }
     });
-    
-    const marker = L.marker([countyInfo.lat, countyInfo.lon], { icon }).addTo(window.floodMap);
-    
-    // Create comprehensive popup
-    const popupContent = `
-        <div style="text-align: center; padding: 12px; min-width: 200px;">
-            <h3 style="margin: 0 0 12px 0; color: #2d3748; font-size: 16px;">${countyInfo.name}</h3>
-            <div style="margin-bottom: 12px;">
-                <div style="font-size: 24px; font-weight: bold; color: ${markerColor}; margin: 8px 0;">${countyRisk}%</div>
-                <div style="color: #666; font-size: 12px; margin-bottom: 8px;">Flood Risk Level</div>
-                <div style="padding: 4px 12px; background: ${markerColor}20; border-radius: 15px; font-size: 12px; color: ${markerColor}; font-weight: 600; display: inline-block;">
-                    ${getRiskLevel(countyRisk).toUpperCase()}
-                </div>
-            </div>
-            
-            <button onclick="selectCountyFromMap('${countyKey}')" style="
-                background: linear-gradient(135deg, #3498db, #2980b9); 
-                color: white; 
-                border: none; 
-                padding: 8px 16px; 
-                border-radius: 20px; 
-                font-size: 12px; 
-                font-weight: 600; 
-                cursor: pointer; 
-                margin-top: 8px;
-            ">
-                ${isCurrentCounty ? '✓ Current County' : 'Select County'}
-            </button>
-        </div>
-    `;
-    
-    marker.bindPopup(popupContent);
-    
-    // Open popup for current county
-    if (isCurrentCounty) {
-        marker.openPopup();
+
+    // Update content visibility
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+        if (content.id === `${tabName}-tab`) {
+            content.classList.add('active');
+        }
+    });
+
+    console.log(`📋 Switched to ${tabName} tab`);
+}
+
+// Update global statistics
+function updateGlobalStatistics() {
+    try {
+        // Calculate totals from regional data
+        const totals = Object.values(globalFloodData.regions).reduce((acc, region) => {
+            acc.affected += region.affected;
+            acc.activeFloods += region.activeFloods;
+            acc.shelters += region.details.shelters;
+            acc.rescueUnits += region.details.rescueUnits;
+            return acc;
+        }, { affected: 0, activeFloods: 0, shelters: 0, rescueUnits: 0 });
+
+        // Update DOM elements
+        updateStatElement('activeFloodsGlobal', totals.activeFloods);
+        updateStatElement('peopleAffectedGlobal', formatNumber(totals.affected));
+        updateStatElement('sheltersActiveGlobal', totals.shelters);
+        updateStatElement('rescueUnitsGlobal', totals.rescueUnits);
+        updateStatElement('economicImpactGlobal', '$2.8B'); // Simulated value
+
+        console.log('📊 Global statistics updated');
+    } catch (error) {
+        console.error('❌ Statistics update error:', error);
     }
 }
 
-// Function to select county from map click
-window.selectCountyFromMap = function(countyKey) {
-    if (countyKey !== currentCounty) {
-        currentCounty = countyKey;
-        updateCurrentCountyDisplay();
-        loadCurrentCountyData();
-        
-        // Refresh the map to show the new selection
+// Update a statistic element
+function updateStatElement(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.textContent = value;
+        element.style.animation = 'pulse 0.5s ease-in-out';
         setTimeout(() => {
-            initializeFloodMap();
+            element.style.animation = '';
         }, 500);
     }
-};
-
-// Add comprehensive flood map legend
-function addFloodMapLegend() {
-    const legend = L.control({ position: 'bottomright' });
-    
-    legend.onAdd = function(map) {
-        const div = L.DomUtil.create('div', 'flood-map-legend-panel');
-        div.style.background = 'white';
-        div.style.padding = '12px';
-        div.style.borderRadius = '8px';
-        div.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
-        div.style.fontSize = '12px';
-        div.style.lineHeight = '1.4';
-        
-        div.innerHTML = `
-            <div style="font-weight: 600; margin-bottom: 8px; color: #2d3748;">🌊 Flood Risk Levels</div>
-            
-            <div style="margin-bottom: 8px;">
-                <div style="display: flex; align-items: center; margin: 2px 0;">
-                    <div style="width: 12px; height: 12px; border-radius: 50%; background: #27ae60; margin-right: 6px;"></div>
-                    <span>Low Risk (0-25%)</span>
-                </div>
-                <div style="display: flex; align-items: center; margin: 2px 0;">
-                    <div style="width: 12px; height: 12px; border-radius: 50%; background: #f39c12; margin-right: 6px;"></div>
-                    <span>Moderate Risk (25-50%)</span>
-                </div>
-                <div style="display: flex; align-items: center; margin: 2px 0;">
-                    <div style="width: 12px; height: 12px; border-radius: 50%; background: #e67e22; margin-right: 6px;"></div>
-                    <span>High Risk (50-75%)</span>
-                </div>
-                <div style="display: flex; align-items: center; margin: 2px 0;">
-                    <div style="width: 12px; height: 12px; border-radius: 50%; background: #e74c3c; margin-right: 6px;"></div>
-                    <span>Extreme Risk (75-100%)</span>
-                </div>
-            </div>
-            
-            <div style="font-size: 10px; color: #999; margin-top: 8px; border-top: 1px solid #eee; padding-top: 6px;">
-                Click any county for details<br>
-                Data: NOAA, USGS, King County
-            </div>
-        `;
-        
-        return div;
-    };
-    
-    legend.addTo(window.floodMap);
 }
 
-// Update map function
-function updateFloodMap(countyInfo, floodRiskData) {
-    initializeFloodMap();
-}
-
-// Check for flood alerts and warnings
-function checkFloodAlerts() {
-    // Simulate checking for active flood alerts
-    const hasAlert = Math.random() > 0.7; // 30% chance of active alert
-    const alertBanner = document.getElementById('alertBanner');
-    
-    if (hasAlert) {
-        alertBanner.style.display = 'block';
-        alertBanner.querySelector('.alert-text').textContent = 
-            `Flood Watch Active for ${WA_COUNTIES[currentCounty].name} - Monitor conditions closely`;
-    } else {
-        alertBanner.style.display = 'none';
+// Format number for display
+function formatNumber(num) {
+    if (num >= 1000000) {
+        return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+        return (num / 1000).toFixed(0) + 'K';
     }
-    
-    // Update alerts tab content
-    updateActiveAlerts();
+    return num.toString();
 }
 
-// Update active alerts display
-function updateActiveAlerts() {
-    const alertsContainer = document.getElementById('activeAlerts');
-    if (!alertsContainer) return;
-    
-    alertsContainer.innerHTML = '';
-    
-    // Generate some sample alerts
-    const alerts = generateSampleAlerts();
-    
-    if (alerts.length === 0) {
-        alertsContainer.innerHTML = `
-            <div style="text-align: center; padding: 2rem; color: #666;">
-                <div style="font-size: 2rem; margin-bottom: 1rem;">✅</div>
-                <h3>No Active Flood Alerts</h3>
-                <p>No flood warnings or watches are currently active for your area.</p>
-            </div>
-        `;
-    } else {
-        alerts.forEach(alert => {
-            const alertDiv = document.createElement('div');
-            alertDiv.className = 'alert-card';
-            alertDiv.innerHTML = `
-                <div class="alert-icon-large">${alert.icon}</div>
-                <div class="alert-details">
-                    <div class="alert-title">${alert.title}</div>
-                    <div class="alert-description">${alert.description}</div>
-                    <div class="alert-time">${alert.time}</div>
-                </div>
-            `;
-            alertsContainer.appendChild(alertDiv);
-        });
-    }
+// Start data update interval
+function startDataUpdateInterval() {
+    // Update data every 30 seconds
+    updateInterval = setInterval(() => {
+        updateGlobalStatistics();
+        simulateDataChanges();
+    }, 30000);
+
+    console.log('⏰ Data update interval started (30s)');
 }
 
-// Generate sample alerts based on current conditions
-function generateSampleAlerts() {
-    const alerts = [];
-    const county = WA_COUNTIES[currentCounty];
-    const month = new Date().getMonth();
-    const isWinterStorm = month >= 10 || month <= 2;
+// Simulate data changes for demo purposes
+function simulateDataChanges() {
+    // Add small random variations to simulate real-time data
+    Object.values(globalFloodData.regions).forEach(region => {
+        const variation = Math.random() * 0.1 - 0.05; // ±5% variation
+        region.affected = Math.floor(region.affected * (1 + variation));
+    });
     
-    if (isWinterStorm && Math.random() > 0.5) {
-        alerts.push({
-            icon: '🌧️',
-            title: 'Heavy Rain Advisory',
-            description: `Heavy rainfall expected across ${county.name}. 1-2 inches possible in the next 12 hours. Monitor local streams and creeks.`,
-            time: 'Active until tomorrow 6:00 AM'
-        });
-    }
-    
-    if (currentCounty === 'king' && Math.random() > 0.6) {
-        alerts.push({
-            icon: '🌊',
-            title: 'River Flood Watch',
-            description: 'Green River approaching minor flood stage near Auburn. Residents in flood-prone areas should monitor conditions.',
-            time: 'Issued 2 hours ago'
-        });
-    }
-    
-    return alerts;
+    updateGlobalStatistics();
 }
 
-// Helper functions
-function getRiskLevel(risk) {
-    if (risk <= 25) return 'low';
-    if (risk <= 50) return 'moderate';
-    if (risk <= 75) return 'high';
-    return 'extreme';
-}
-
-function getRiskColor(risk) {
-    if (risk <= 25) return '#27ae60';
-    if (risk <= 50) return '#f39c12';
-    if (risk <= 75) return '#e67e22';
-    return '#e74c3c';
-}
-
-function getRiskEmoji(risk) {
-    if (risk <= 25) return '🟢';
-    if (risk <= 50) return '🟡';
-    if (risk <= 75) return '🟠';
-    return '🔴';
-}
-
-function getRiskDescription(risk) {
-    if (risk <= 25) return 'Low flood risk';
-    if (risk <= 50) return 'Moderate risk';
-    if (risk <= 75) return 'High flood risk';
-    return 'Extreme risk';
-}
-
-function generateCountyRiskLevel(countyKey) {
-    const baseRisks = {
-        'king': 65,
-        'pierce': 58,
-        'snohomish': 62,
-        'thurston': 45,
-        'clark': 52,
-        'skagit': 70,
-        'whatcom': 68,
-        'kitsap': 40
-    };
-    
-    let risk = baseRisks[countyKey] || 50;
-    risk += Math.random() * 20 - 10; // Add variability
-    return Math.max(0, Math.min(100, Math.round(risk)));
-}
-
-function updateRiskStatus(riskLevel) {
-    const statusElement = document.getElementById('riskStatus');
-    statusElement.className = 'status';
-    
-    statusElement.classList.add(riskLevel);
-    statusElement.textContent = riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1);
-}
-
-function animateCounter(elementId, targetValue) {
-    const element = document.getElementById(elementId);
-    if (!element) return;
-    
-    const currentValue = parseFloat(element.textContent) || 0;
-    const difference = targetValue - currentValue;
-    const steps = 20;
-    const stepValue = difference / steps;
-    
-    let current = currentValue;
-    let step = 0;
-    
-    const timer = setInterval(() => {
-        step++;
-        current += stepValue;
-        
-        if (typeof targetValue === 'string' || targetValue > 100) {
-            element.textContent = Math.round(current).toLocaleString();
-        } else {
-            element.textContent = current.toFixed(1);
+// Emergency response functions
+function showEvacuationRoutes() {
+    worldMap.eachLayer(layer => {
+        if (layer.options && layer.options.className === 'evacuation-route') {
+            worldMap.removeLayer(layer);
         }
-        
-        if (step >= steps) {
-            element.textContent = typeof targetValue === 'string' ? targetValue : 
-                               targetValue > 100 ? Math.round(targetValue).toLocaleString() : 
-                               targetValue.toFixed(1);
-            clearInterval(timer);
-        }
-    }, 50);
+    });
+
+    // Add sample evacuation routes
+    const evacuationRoutes = [
+        [[23.8, 90.3], [24.0, 90.8], [24.2, 91.2]],
+        [[50.1, 8.7], [50.3, 8.9], [50.5, 9.1]]
+    ];
+
+    evacuationRoutes.forEach(route => {
+        L.polyline(route, {
+            color: '#fbbf24',
+            weight: 4,
+            opacity: 0.8,
+            className: 'evacuation-route'
+        }).addTo(worldMap).bindPopup('Emergency Evacuation Route');
+    });
+
+    showNotification('Evacuation routes displayed on map', 'info');
 }
 
-function animateMetrics() {
-    const metricCards = document.querySelectorAll('.metric-card');
-    metricCards.forEach((card, index) => {
+function showEmergencyShelters() {
+    // Sample shelter locations
+    const shelters = [
+        { location: [23.9, 90.5], capacity: 1000 },
+        { location: [50.2, 8.8], capacity: 500 },
+        { location: [-27.4, 153.1], capacity: 750 }
+    ];
+
+    shelters.forEach(shelter => {
+        L.circleMarker(shelter.location, {
+            radius: 8,
+            fillColor: '#22c55e',
+            color: '#16a34a',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.8
+        }).addTo(worldMap).bindPopup(`Emergency Shelter<br>Capacity: ${shelter.capacity} people`);
+    });
+
+    showNotification('Emergency shelters displayed on map', 'info');
+}
+
+function showRescueUnits() {
+    // Sample rescue unit locations
+    const rescueUnits = [
+        { location: [24.1, 90.7], type: 'Helicopter' },
+        { location: [50.4, 8.9], type: 'Boat Team' },
+        { location: [-27.3, 153.2], type: 'Ground Unit' }
+    ];
+
+    rescueUnits.forEach(unit => {
+        L.marker(unit.location, {
+            icon: L.divIcon({
+                html: '🚁',
+                className: 'rescue-marker',
+                iconSize: [20, 20]
+            })
+        }).addTo(worldMap).bindPopup(`Rescue Unit: ${unit.type}`);
+    });
+
+    showNotification('Rescue units displayed on map', 'info');
+}
+
+function showSupplyChains() {
+    // Sample supply chain routes
+    const supplyRoutes = [
+        [[23.7, 90.1], [23.9, 90.4], [24.1, 90.7]],
+        [[50.0, 8.5], [50.2, 8.8], [50.4, 9.0]]
+    ];
+
+    supplyRoutes.forEach(route => {
+        L.polyline(route, {
+            color: '#8b5cf6',
+            weight: 3,
+            opacity: 0.7,
+            className: 'supply-route',
+            dashArray: '10, 10'
+        }).addTo(worldMap).bindPopup('Supply Chain Route');
+    });
+
+    showNotification('Supply chains displayed on map', 'info');
+}
+
+// Region zoom functions
+function zoomToRegion(regionName) {
+    const regionBounds = {
+        'global': [[60, -180], [-60, 180]],
+        'asia': [[50, 60], [10, 150]],
+        'europe': [[70, -10], [35, 40]],
+        'americas': [[70, -170], [-55, -30]],
+        'africa': [[35, -20], [-35, 55]]
+    };
+
+    if (regionBounds[regionName]) {
+        worldMap.fitBounds(regionBounds[regionName]);
+        showNotification(`Zoomed to ${regionName}`, 'info');
+    }
+}
+
+// Toggle functions
+function toggleEmergencyMode() {
+    const body = document.body;
+    body.classList.toggle('emergency-mode');
+    
+    if (body.classList.contains('emergency-mode')) {
+        showNotification('Emergency mode activated', 'warning');
+        // Show emergency overlay
+        document.querySelectorAll('.emergency-marker').forEach(marker => {
+            marker.style.animation = 'pulse 1s infinite';
+        });
+    } else {
+        showNotification('Emergency mode deactivated', 'info');
+    }
+}
+
+function togglePredictions() {
+    const currentMode = currentTimeframe;
+    const newMode = currentMode === 'current' ? '24h' : 'current';
+    
+    document.getElementById('riskTimeframe').value = newMode;
+    currentTimeframe = newMode;
+    updateMapData();
+    
+    showNotification(`Switched to ${newMode === 'current' ? 'current conditions' : 'future predictions'}`, 'info');
+}
+
+function toggleEmergencyDetails() {
+    const modal = document.getElementById('emergencyModal');
+    if (modal.style.display === 'none' || !modal.style.display) {
+        modal.style.display = 'flex';
+        modal.style.animation = 'fadeIn 0.3s ease';
+    } else {
+        modal.style.animation = 'fadeOut 0.3s ease';
         setTimeout(() => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            card.style.transition = 'all 0.6s ease';
-            
-            setTimeout(() => {
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }, 100);
-        }, index * 150);
-    });
-}
-
-function updateLastUpdated() {
-    const now = new Date();
-    const timeString = now.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZoneName: 'short'
-    });
-    document.getElementById('lastUpdated').textContent = timeString;
-}
-
-function showLoadingState() {
-    console.log('🔄 Loading flood data...');
-    const metricCards = document.querySelectorAll('.metric-card .number');
-    metricCards.forEach(card => {
-        card.style.opacity = '0.5';
-    });
-}
-
-function hideLoadingState() {
-    const metricCards = document.querySelectorAll('.metric-card .number');
-    metricCards.forEach(card => {
-        card.style.opacity = '1';
-    });
-}
-
-// Fallback data generators for when APIs are unavailable
-function generateRealisticWeatherData(countyInfo) {
-    const month = new Date().getMonth();
-    const isWinterStorm = month >= 10 || month <= 2;
-    
-    return {
-        current: {
-            temperature: isWinterStorm ? 35 + Math.random() * 20 : 55 + Math.random() * 25,
-            humidity: 70 + Math.random() * 20,
-            precipitation: isWinterStorm ? Math.random() * 2 : Math.random() * 0.5,
-            weatherCode: isWinterStorm ? 63 : 1
-        },
-        hourly: {
-            time: Array.from({length: 24}, (_, i) => new Date(Date.now() - (24-i) * 60 * 60 * 1000).toISOString()),
-            precipitation: Array.from({length: 24}, () => isWinterStorm ? Math.random() * 1.5 : Math.random() * 0.3),
-            temperature: Array.from({length: 24}, () => isWinterStorm ? 35 + Math.random() * 15 : 55 + Math.random() * 20)
-        },
-        daily: {
-            time: Array.from({length: 7}, (_, i) => new Date(Date.now() + i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]),
-            precipitation: Array.from({length: 7}, () => isWinterStorm ? Math.random() * 3 : Math.random() * 1),
-            temperatureMax: Array.from({length: 7}, () => isWinterStorm ? 45 + Math.random() * 15 : 65 + Math.random() * 20),
-            temperatureMin: Array.from({length: 7}, () => isWinterStorm ? 30 + Math.random() * 10 : 45 + Math.random() * 15)
-        }
-    };
-}
-
-function generateRealisticStreamflowData(countyInfo) {
-    const baseFlow = {
-        'king': 850,
-        'pierce': 650,
-        'snohomish': 750,
-        'thurston': 400,
-        'clark': 550,
-        'skagit': 1200,
-        'whatcom': 900,
-        'kitsap': 300
-    };
-    
-    const flow = baseFlow[currentCounty] || 600;
-    const currentFlow = flow * (0.7 + Math.random() * 0.6); // Add 30% variability
-    
-    return {
-        currentFlow: currentFlow,
-        siteName: `${WA_COUNTIES[currentCounty].name} River`,
-        values: Array.from({length: 24}, (_, i) => ({
-            dateTime: new Date(Date.now() - (24-i) * 60 * 60 * 1000).toISOString(),
-            value: currentFlow * (0.9 + Math.random() * 0.2)
-        }))
-    };
-}
-
-function loadFallbackData(countyInfo) {
-    console.log(`🔄 Loading fallback data for ${countyInfo.name}...`);
-    
-    const weatherData = generateRealisticWeatherData(countyInfo);
-    const streamflowData = generateRealisticStreamflowData(countyInfo);
-    const floodRiskData = generateFloodRiskAssessment(countyInfo);
-    
-    floodRiskData.then(riskData => {
-        updateCurrentMetrics(weatherData, streamflowData, riskData);
-        updateCharts(weatherData, streamflowData, riskData);
-        updateFloodMap(countyInfo, riskData);
-        checkFloodAlerts();
-        
-        updateLastUpdated();
-        hideLoadingState();
-        
-        console.log(`✅ Fallback data loaded for ${countyInfo.name}`);
-    });
-}
-
-// Setup tab navigation functionality
-function setupTabNavigation() {
-    const tabButtons = document.querySelectorAll('.tab-button');
-    const tabContents = document.querySelectorAll('.tab-content');
-    
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const targetTab = button.getAttribute('data-tab');
-            
-            // Remove active class from all buttons and contents
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            tabContents.forEach(content => content.classList.remove('active'));
-            
-            // Add active class to clicked button
-            button.classList.add('active');
-            
-            // Show corresponding content
-            const targetContent = document.getElementById(`${targetTab}-content`);
-            if (targetContent) {
-                targetContent.classList.add('active');
-            }
-            
-            // Initialize map if switching to dashboard tab
-            if (targetTab === 'dashboard') {
-                setTimeout(() => {
-                    initializeFloodMap();
-                }, 300);
-            }
-            
-            console.log(`🔄 Switched to ${targetTab} tab`);
-        });
-    });
-    
-    // Initialize the flood map on page load for the default tab
-    setTimeout(() => {
-        initializeFloodMap();
-    }, 1000);
-}
-
-// Auto-refresh data every 10 minutes
-setInterval(() => {
-    if (document.visibilityState === 'visible') {
-        loadCurrentCountyData();
+            modal.style.display = 'none';
+        }, 300);
     }
-}, 600000);
+}
 
-// Initialize with default county
-setTimeout(() => {
-    console.log('🌊 FloodWatch WA Dashboard ready!');
-    console.log(`📍 Monitoring flood risk across Washington State`);
-    console.log('🔄 Real-time data from NOAA, USGS, and King County APIs');
-    console.log('🚨 Early warning system active');
-}, 1000);
+// Update map data based on current settings
+function updateMapData() {
+    // Update overlays based on current timeframe
+    riskPolygons.forEach(polygon => {
+        const newOpacity = currentTimeframe === 'current' ? 0.3 : 0.5;
+        polygon.setStyle({ fillOpacity: newOpacity });
+    });
+
+    console.log(`🗺️ Map data updated for ${currentTimeframe}`);
+}
+
+// Update map layer
+function updateMapLayer() {
+    // In a real application, this would switch between different data layers
+    console.log(`🔄 Switched to ${currentLayer} layer`);
+}
+
+// Show notification
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    
+    const styles = {
+        position: 'fixed',
+        top: '100px',
+        right: '20px',
+        background: type === 'error' ? '#dc2626' : type === 'warning' ? '#f59e0b' : '#3b82f6',
+        color: 'white',
+        padding: '1rem 1.5rem',
+        borderRadius: '10px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+        zIndex: '1000',
+        fontSize: '0.9rem',
+        fontWeight: '500',
+        maxWidth: '300px',
+        animation: 'slideInRight 0.3s ease'
+    };
+
+    Object.assign(notification.style, styles);
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 4000);
+}
+
+// Add CSS animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes fadeOut {
+        from { opacity: 1; transform: scale(1); }
+        to { opacity: 0; transform: scale(0.9); }
+    }
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.8; }
+    }
+    .rescue-marker, .custom-emergency-marker {
+        border-radius: 50%;
+        border: 2px solid white;
+        text-align: center;
+        line-height: 1;
+    }
+`;
+document.head.appendChild(style);
+
+// Error handling
+window.addEventListener('error', (e) => {
+    console.error('❌ Application error:', e.error);
+    showNotification('An error occurred. Some features may not work correctly.', 'error');
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (updateInterval) {
+        clearInterval(updateInterval);
+    }
+});
+
+console.log('🚀 FloodPlan Global - Script loaded successfully');

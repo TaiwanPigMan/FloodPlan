@@ -3,448 +3,533 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FloodWatch WA - Flood Risk Visualization Dashboard</title>
+    <title>FloodPlan Global - Worldwide Flood Risk Assessment & Emergency Planning</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <div class="header-content">
-                <div class="logo">
-                    <h1>🌊 FloodWatch WA</h1>
-                    <p>Washington State Flood Risk Monitoring & Early Warning System</p>
+    <div class="app-container">
+        <!-- Emergency Alert Bar -->
+        <div class="emergency-banner" id="emergencyBanner">
+            <div class="emergency-content">
+                <span class="emergency-icon">🚨</span>
+                <span class="emergency-text">Global Emergency Mode: 3 Active Flood Emergencies Worldwide</span>
+                <button class="emergency-details-btn" onclick="toggleEmergencyDetails()">View Details</button>
+            </div>
+        </div>
+
+        <!-- Header Section -->
+        <header class="header">
+            <div class="header-container">
+                <div class="logo-section">
+                    <h1><i class="fas fa-globe-americas"></i> FloodPlan Global</h1>
+                    <p>Worldwide Flood Risk Assessment & Emergency Response Coordination</p>
                 </div>
-                <div class="creator-badge">
-                    <span>Real-time Flood Intelligence</span>
-                    <div class="contact">King County + NOAA + USGS Data Integration</div>
+                <div class="controls-section">
+                    <div class="scenario-controls">
+                        <select id="riskTimeframe" class="control-select">
+                            <option value="current">Current Conditions</option>
+                            <option value="24h">24-Hour Forecast</option>
+                            <option value="7day">7-Day Outlook</option>
+                            <option value="seasonal">Seasonal Prediction</option>
+                        </select>
+                        <button id="togglePrediction" class="control-btn">
+                            <i class="fas fa-chart-line"></i> Future Scenarios
+                        </button>
+                        <button id="emergencyMode" class="emergency-btn">
+                            <i class="fas fa-exclamation-triangle"></i> Emergency Mode
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Global Dashboard -->
+        <main class="main-content">
+            <!-- Global Statistics Bar -->
+            <section class="global-stats">
+                <div class="stat-item">
+                    <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="activeFloodsGlobal">23</div>
+                        <div class="stat-label">Active Floods</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon"><i class="fas fa-users"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="peopleAffectedGlobal">1.4M</div>
+                        <div class="stat-label">People Affected</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon"><i class="fas fa-home"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="sheltersActiveGlobal">847</div>
+                        <div class="stat-label">Emergency Shelters</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon"><i class="fas fa-helicopter"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="rescueUnitsGlobal">156</div>
+                        <div class="stat-label">Rescue Units</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon"><i class="fas fa-dollar-sign"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="economicImpactGlobal">$2.8B</div>
+                        <div class="stat-label">Economic Impact</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- World Map Container -->
+            <section class="map-container">
+                <div class="map-header">
+                    <h2><i class="fas fa-map-marked-alt"></i> Global Flood Risk Assessment</h2>
+                    <div class="map-controls">
+                        <button class="map-control-btn active" data-layer="risk">Risk Levels</button>
+                        <button class="map-control-btn" data-layer="precipitation">Precipitation</button>
+                        <button class="map-control-btn" data-layer="elevation">Elevation</button>
+                        <button class="map-control-btn" data-layer="population">Population Density</button>
+                    </div>
+                </div>
+                <div id="worldMap" class="world-map"></div>
+                <div class="map-overlay">
+                    <div class="legend">
+                        <h3><i class="fas fa-info-circle"></i> Flood Risk Scale</h3>
+                        <div class="legend-items">
+                            <div class="legend-item">
+                                <span class="color-box minimal"></span>
+                                <span>Minimal Risk (0-20%)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="color-box low"></span>
+                                <span>Low Risk (21-40%)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="color-box moderate"></span>
+                                <span>Moderate Risk (41-60%)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="color-box high"></span>
+                                <span>High Risk (61-80%)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="color-box extreme"></span>
+                                <span>Extreme Risk (81-100%)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="color-box emergency"></span>
+                                <span>Emergency Active</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" onclick="zoomToRegion('global')">🌍 Global</button>
+                        <button class="zoom-btn" onclick="zoomToRegion('asia')">🌏 Asia-Pacific</button>
+                        <button class="zoom-btn" onclick="zoomToRegion('europe')">🌍 Europe</button>
+                        <button class="zoom-btn" onclick="zoomToRegion('americas')">🌎 Americas</button>
+                        <button class="zoom-btn" onclick="zoomToRegion('africa')">🌍 Africa</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Side Panel with Regional Analysis -->
+            <section class="content-grid">
+                <div class="side-panel">
+                    <div class="panel-section">
+                        <h3><i class="fas fa-crosshairs"></i> Regional Analysis</h3>
+                        <div id="regionInfo" class="region-info">
+                            <div class="info-placeholder">
+                                <i class="fas fa-mouse-pointer"></i>
+                                <p>Click any region on the map for detailed flood risk analysis</p>
+                                <div class="sample-data">
+                                    <h4>Global Overview</h4>
+                                    <ul>
+                                        <li>🌊 Highest Risk: Southeast Asia Monsoon Region</li>
+                                        <li>📈 Trending: European River Systems</li>
+                                        <li>⚠️ Watch: South American River Basins</li>
+                                        <li>🎯 Active Monitoring: 1,247 stations worldwide</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-section">
+                        <h3><i class="fas fa-route"></i> Emergency Response</h3>
+                        <div class="emergency-options">
+                            <button class="response-btn evacuation" onclick="showEvacuationRoutes()">
+                                <i class="fas fa-road"></i> Evacuation Routes
+                            </button>
+                            <button class="response-btn shelters" onclick="showEmergencyShelters()">
+                                <i class="fas fa-home"></i> Emergency Shelters
+                            </button>
+                            <button class="response-btn rescue" onclick="showRescueUnits()">
+                                <i class="fas fa-helicopter"></i> Rescue Units
+                            </button>
+                            <button class="response-btn supplies" onclick="showSupplyChains()">
+                                <i class="fas fa-truck"></i> Supply Chains
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="panel-section">
+                        <h3><i class="fas fa-bell"></i> Active Alerts</h3>
+                        <div id="alerts" class="alerts-container">
+                            <div class="alert critical">
+                                <span class="alert-icon">🔴</span>
+                                <div class="alert-content">
+                                    <strong>Critical Flood Warning</strong>
+                                    <p>Bangladesh: Monsoon flooding affecting 500,000 people</p>
+                                    <small><i class="fas fa-clock"></i> 2 hours ago</small>
+                                </div>
+                            </div>
+                            <div class="alert warning">
+                                <span class="alert-icon">🟡</span>
+                                <div class="alert-content">
+                                    <strong>Flood Watch</strong>
+                                    <p>Central Europe: River levels rising due to Alpine snowmelt</p>
+                                    <small><i class="fas fa-clock"></i> 4 hours ago</small>
+                                </div>
+                            </div>
+                            <div class="alert info">
+                                <span class="alert-icon">🔵</span>
+                                <div class="alert-content">
+                                    <strong>Advisory Update</strong>
+                                    <p>South America: Seasonal rainfall patterns above average</p>
+                                    <small><i class="fas fa-clock"></i> 6 hours ago</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-section">
+                        <h3><i class="fas fa-chart-bar"></i> Risk Analytics</h3>
+                        <div class="analytics-grid">
+                            <div class="analytics-card">
+                                <div class="analytics-icon">📊</div>
+                                <div class="analytics-title">Global Risk Index</div>
+                                <div class="analytics-value">73.2</div>
+                                <div class="analytics-trend up">+5.8% vs last month</div>
+                            </div>
+                            <div class="analytics-card">
+                                <div class="analytics-icon">🌧️</div>
+                                <div class="analytics-title">Precipitation Anomaly</div>
+                                <div class="analytics-value">+23%</div>
+                                <div class="analytics-trend up">Above seasonal average</div>
+                            </div>
+                            <div class="analytics-card">
+                                <div class="analytics-icon">🌡️</div>
+                                <div class="analytics-title">Temperature Impact</div>
+                                <div class="analytics-value">+1.4°C</div>
+                                <div class="analytics-trend up">Accelerated snowmelt</div>
+                            </div>
+                            <div class="analytics-card">
+                                <div class="analytics-icon">🏔️</div>
+                                <div class="analytics-title">Sea Level Rise</div>
+                                <div class="analytics-value">+3.2mm</div>
+                                <div class="analytics-trend up">Annual rate increase</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Dashboard Content -->
+                <div class="dashboard-content">
+                    <div class="tab-navigation">
+                        <button class="tab-btn active" data-tab="overview">
+                            <i class="fas fa-tachometer-alt"></i> Overview
+                        </button>
+                        <button class="tab-btn" data-tab="forecast">
+                            <i class="fas fa-chart-line"></i> Forecast
+                        </button>
+                        <button class="tab-btn" data-tab="response">
+                            <i class="fas fa-hands-helping"></i> Response
+                        </button>
+                        <button class="tab-btn" data-tab="analysis">
+                            <i class="fas fa-microscope"></i> Analysis
+                        </button>
+                    </div>
+
+                    <!-- Overview Tab -->
+                    <div class="tab-content active" id="overview-tab">
+                        <div class="overview-grid">
+                            <div class="chart-container">
+                                <h4><i class="fas fa-globe"></i> Global Flood Distribution</h4>
+                                <canvas id="globalFloodChart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <h4><i class="fas fa-calendar-alt"></i> 24-Hour Precipitation Forecast</h4>
+                                <canvas id="precipitationChart"></canvas>
+                            </div>
+                            <div class="data-grid">
+                                <h4><i class="fas fa-list"></i> Regional Risk Summary</h4>
+                                <div class="regional-summary">
+                                    <div class="region-item">
+                                        <span class="region-flag">🌏</span>
+                                        <span class="region-name">Asia-Pacific</span>
+                                        <span class="risk-level extreme">Extreme</span>
+                                        <span class="affected-count">847K affected</span>
+                                    </div>
+                                    <div class="region-item">
+                                        <span class="region-flag">🌍</span>
+                                        <span class="region-name">Europe</span>
+                                        <span class="risk-level high">High</span>
+                                        <span class="affected-count">234K affected</span>
+                                    </div>
+                                    <div class="region-item">
+                                        <span class="region-flag">🌎</span>
+                                        <span class="region-name">South America</span>
+                                        <span class="risk-level moderate">Moderate</span>
+                                        <span class="affected-count">156K affected</span>
+                                    </div>
+                                    <div class="region-item">
+                                        <span class="region-flag">🌍</span>
+                                        <span class="region-name">Africa</span>
+                                        <span class="risk-level moderate">Moderate</span>
+                                        <span class="affected-count">98K affected</span>
+                                    </div>
+                                    <div class="region-item">
+                                        <span class="region-flag">🌎</span>
+                                        <span class="region-name">North America</span>
+                                        <span class="risk-level low">Low</span>
+                                        <span class="affected-count">45K affected</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Forecast Tab -->
+                    <div class="tab-content" id="forecast-tab">
+                        <div class="forecast-grid">
+                            <div class="forecast-container">
+                                <h4><i class="fas fa-cloud-rain"></i> 7-Day Global Precipitation</h4>
+                                <canvas id="weeklyPrecipitationChart"></canvas>
+                            </div>
+                            <div class="forecast-container">
+                                <h4><i class="fas fa-temperature-high"></i> Climate Impact Factors</h4>
+                                <canvas id="climateFactorsChart"></canvas>
+                            </div>
+                            <div class="risk-timeline">
+                                <h4><i class="fas fa-timeline"></i> Risk Evolution Timeline</h4>
+                                <div class="timeline-container">
+                                    <div class="timeline-item current">
+                                        <div class="timeline-date">Today</div>
+                                        <div class="timeline-risk extreme">Extreme</div>
+                                        <div class="timeline-desc">Monsoon peak in South Asia</div>
+                                    </div>
+                                    <div class="timeline-item">
+                                        <div class="timeline-date">+3 Days</div>
+                                        <div class="timeline-risk high">High</div>
+                                        <div class="timeline-desc">European river systems rising</div>
+                                    </div>
+                                    <div class="timeline-item">
+                                        <div class="timeline-date">+7 Days</div>
+                                        <div class="timeline-risk moderate">Moderate</div>
+                                        <div class="timeline-desc">Atlantic storm system approaching</div>
+                                    </div>
+                                    <div class="timeline-item">
+                                        <div class="timeline-date">+14 Days</div>
+                                        <div class="timeline-risk low">Low</div>
+                                        <div class="timeline-desc">Seasonal transition period</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Response Tab -->
+                    <div class="tab-content" id="response-tab">
+                        <div class="response-grid">
+                            <div class="response-section">
+                                <h4><i class="fas fa-users"></i> International Coordination</h4>
+                                <div class="coordination-status">
+                                    <div class="coord-item">
+                                        <span class="coord-flag">🇺🇳</span>
+                                        <span class="coord-org">UN OCHA</span>
+                                        <span class="coord-status active">Active</span>
+                                        <span class="coord-role">Coordination Hub</span>
+                                    </div>
+                                    <div class="coord-item">
+                                        <span class="coord-flag">🌍</span>
+                                        <span class="coord-org">WHO</span>
+                                        <span class="coord-status active">Active</span>
+                                        <span class="coord-role">Health Response</span>
+                                    </div>
+                                    <div class="coord-item">
+                                        <span class="coord-flag">🌊</span>
+                                        <span class="coord-org">WMO</span>
+                                        <span class="coord-status monitoring">Monitoring</span>
+                                        <span class="coord-role">Weather Intelligence</span>
+                                    </div>
+                                    <div class="coord-item">
+                                        <span class="coord-flag">🛡️</span>
+                                        <span class="coord-org">IFRC</span>
+                                        <span class="coord-status deployed">Deployed</span>
+                                        <span class="coord-role">Relief Operations</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="response-section">
+                                <h4><i class="fas fa-plane"></i> Resource Deployment</h4>
+                                <div class="resource-deployment">
+                                    <div class="resource-type">
+                                        <h5>Search & Rescue</h5>
+                                        <div class="resource-progress">
+                                            <div class="progress-bar">
+                                                <div class="progress-fill" style="width: 78%"></div>
+                                            </div>
+                                            <span>156/200 units deployed</span>
+                                        </div>
+                                    </div>
+                                    <div class="resource-type">
+                                        <h5>Emergency Supplies</h5>
+                                        <div class="resource-progress">
+                                            <div class="progress-bar">
+                                                <div class="progress-fill" style="width: 65%"></div>
+                                            </div>
+                                            <span>1.3M/2M kits distributed</span>
+                                        </div>
+                                    </div>
+                                    <div class="resource-type">
+                                        <h5>Medical Support</h5>
+                                        <div class="resource-progress">
+                                            <div class="progress-bar">
+                                                <div class="progress-fill" style="width: 82%"></div>
+                                            </div>
+                                            <span>41/50 medical teams active</span>
+                                        </div>
+                                    </div>
+                                    <div class="resource-type">
+                                        <h5>Temporary Shelters</h5>
+                                        <div class="resource-progress">
+                                            <div class="progress-bar">
+                                                <div class="progress-fill" style="width: 93%"></div>
+                                            </div>
+                                            <span>847/900 shelters operational</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Analysis Tab -->
+                    <div class="tab-content" id="analysis-tab">
+                        <div class="analysis-grid">
+                            <div class="analysis-container">
+                                <h4><i class="fas fa-chart-area"></i> Historical Trends (2020-2024)</h4>
+                                <canvas id="historicalTrendsChart"></canvas>
+                            </div>
+                            <div class="analysis-container">
+                                <h4><i class="fas fa-thermometer-half"></i> Climate Change Impact</h4>
+                                <canvas id="climateImpactChart"></canvas>
+                            </div>
+                            <div class="vulnerability-assessment">
+                                <h4><i class="fas fa-shield-alt"></i> Vulnerability Assessment</h4>
+                                <div class="vulnerability-grid">
+                                    <div class="vuln-category">
+                                        <div class="vuln-title">Coastal Vulnerability</div>
+                                        <div class="vuln-score critical">85/100</div>
+                                        <div class="vuln-desc">Sea level rise + storm surge</div>
+                                    </div>
+                                    <div class="vuln-category">
+                                        <div class="vuln-title">Urban Flood Risk</div>
+                                        <div class="vuln-score high">72/100</div>
+                                        <div class="vuln-desc">Infrastructure aging + population density</div>
+                                    </div>
+                                    <div class="vuln-category">
+                                        <div class="vuln-title">Agricultural Impact</div>
+                                        <div class="vuln-score moderate">58/100</div>
+                                        <div class="vuln-desc">Crop damage + food security</div>
+                                    </div>
+                                    <div class="vuln-category">
+                                        <div class="vuln-title">Economic Resilience</div>
+                                        <div class="vuln-score moderate">61/100</div>
+                                        <div class="vuln-desc">Recovery capacity + insurance coverage</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Emergency Details Modal -->
+        <div id="emergencyModal" class="emergency-modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Active Emergency Situations</h3>
+                    <button class="modal-close" onclick="toggleEmergencyDetails()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="emergency-list">
+                        <div class="emergency-item critical">
+                            <div class="emergency-header">
+                                <span class="emergency-location">Bangladesh & Eastern India</span>
+                                <span class="emergency-severity critical">Critical</span>
+                            </div>
+                            <div class="emergency-details">
+                                <p><strong>Monsoon Flooding:</strong> Extreme rainfall causing widespread flooding across Brahmaputra and Ganges river basins</p>
+                                <div class="emergency-stats">
+                                    <span>👥 500,000 affected</span>
+                                    <span>🏠 45,000 displaced</span>
+                                    <span>💰 $1.2B estimated damage</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="emergency-item warning">
+                            <div class="emergency-header">
+                                <span class="emergency-location">Central Europe</span>
+                                <span class="emergency-severity warning">Warning</span>
+                            </div>
+                            <div class="emergency-details">
+                                <p><strong>Alpine Snowmelt:</strong> Rapid warming causing river levels to rise across Rhine, Elbe, and Danube systems</p>
+                                <div class="emergency-stats">
+                                    <span>👥 150,000 at risk</span>
+                                    <span>🚨 23 flood warnings</span>
+                                    <span>⏰ 72h critical window</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="emergency-item watch">
+                            <div class="emergency-header">
+                                <span class="emergency-location">Queensland, Australia</span>
+                                <span class="emergency-severity watch">Watch</span>
+                            </div>
+                            <div class="emergency-details">
+                                <p><strong>Tropical Cyclone:</strong> Category 3 system approaching coast with flood potential for Brisbane region</p>
+                                <div class="emergency-stats">
+                                    <span>👥 300,000 in path</span>
+                                    <span>🌀 160 km/h winds</span>
+                                    <span>📍 48h landfall estimate</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </header>
-
-    <main>
-        <div class="container">
-            <!-- Hero Section -->
-            <section class="hero">
-                <h2>Real-time Flood Risk Monitoring for Washington State</h2>
-                <div class="location-selector">
-                    <label for="countySelect">Select County:</label>
-                    <select id="countySelect">
-                        <option value="king">King County</option>
-                        <option value="pierce">Pierce County</option>
-                        <option value="snohomish">Snohomish County</option>
-                        <option value="thurston">Thurston County</option>
-                        <option value="kitsap">Kitsap County</option>
-                        <option value="clark">Clark County</option>
-                        <option value="skagit">Skagit County</option>
-                        <option value="whatcom">Whatcom County</option>
-                    </select>
-                    <button id="updateLocation">Update Data</button>
-                </div>
-                <div class="current-location">
-                    <span>📍 Currently monitoring: <span id="currentCounty">King County, WA</span></span>
-                </div>
-                <div class="last-updated">
-                    Last Updated: <span id="lastUpdated"></span>
-                </div>
-                <div class="alert-banner" id="alertBanner" style="display: none;">
-                    <div class="alert-content">
-                        <span class="alert-icon">⚠️</span>
-                        <span class="alert-text">Flood Watch Active - Monitor conditions closely</span>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Key Flood Risk Metrics -->
-            <section class="metrics-grid">
-                <div class="metric-card flood-risk">
-                    <div class="metric-header">
-                        <h3>Overall Flood Risk</h3>
-                        <span class="status moderate" id="riskStatus">Moderate</span>
-                    </div>
-                    <div class="metric-value">
-                        <span class="number" id="floodRiskValue">65</span>
-                        <span class="unit">%</span>
-                    </div>
-                    <div class="metric-description">Short-term risk assessment</div>
-                </div>
-
-                <div class="metric-card rainfall">
-                    <div class="metric-header">
-                        <h3>Current Rainfall</h3>
-                        <span class="icon">🌧️</span>
-                    </div>
-                    <div class="metric-value">
-                        <span class="number" id="rainfallValue">1.2</span>
-                        <span class="unit">in/hr</span>
-                    </div>
-                    <div class="metric-description">Last hour precipitation</div>
-                </div>
-
-                <div class="metric-card river-level">
-                    <div class="metric-header">
-                        <h3>River Level</h3>
-                        <span class="icon">🌊</span>
-                    </div>
-                    <div class="metric-value">
-                        <span class="number" id="riverLevelValue">8.2</span>
-                        <span class="unit">ft</span>
-                    </div>
-                    <div class="metric-description">Above normal stage</div>
-                </div>
-
-                <div class="metric-card streamflow">
-                    <div class="metric-header">
-                        <h3>Streamflow</h3>
-                        <span class="icon">💧</span>
-                    </div>
-                    <div class="metric-value">
-                        <span class="number" id="streamflowValue">2,450</span>
-                        <span class="unit">cfs</span>
-                    </div>
-                    <div class="metric-description">Cubic feet per second</div>
-                </div>
-
-                <div class="metric-card soil-saturation">
-                    <div class="metric-header">
-                        <h3>Soil Saturation</h3>
-                        <span class="icon">🌱</span>
-                    </div>
-                    <div class="metric-value">
-                        <span class="number" id="soilSatValue">78</span>
-                        <span class="unit">%</span>
-                    </div>
-                    <div class="metric-description">Ground water capacity</div>
-                </div>
-            </section>
-
-            <!-- Navigation Tabs -->
-            <section class="tab-navigation">
-                <div class="tab-buttons">
-                    <button class="tab-button active" data-tab="dashboard">🌊 Flood Dashboard</button>
-                    <button class="tab-button" data-tab="forecast">📈 Risk Forecast</button>
-                    <button class="tab-button" data-tab="historical">📊 Historical Trends</button>
-                    <button class="tab-button" data-tab="alerts">🚨 Alerts & Warnings</button>
-                </div>
-            </section>
-
-            <!-- Dashboard Content Tab -->
-            <div class="tab-content active" id="dashboard-content">
-                <!-- Charts Section -->
-                <section class="charts-section">
-                    <div class="chart-container">
-                        <h3>24-Hour Rainfall Trend</h3>
-                        <canvas id="rainfallChart"></canvas>
-                    </div>
-                    <div class="chart-container">
-                        <h3>River Level Monitoring</h3>
-                        <canvas id="riverLevelChart"></canvas>
-                    </div>
-                </section>
-
-                <!-- Map Section -->
-                <section class="map-section">
-                    <h3>Washington State Flood Risk Map</h3>
-                    <div id="map"></div>
-                    <div class="map-legend">
-                        <div class="legend-item">
-                            <span class="legend-color low"></span>
-                            <span>Low Risk</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-color moderate"></span>
-                            <span>Moderate Risk</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-color high"></span>
-                            <span>High Risk</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-color extreme"></span>
-                            <span>Extreme Risk</span>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Safety Tips -->
-                <section class="tips-section">
-                    <h3>Flood Safety & Preparedness</h3>
-                    <div class="tips-grid">
-                        <div class="tip-card">
-                            <div class="tip-icon">🚗</div>
-                            <h4>Never Drive Through Flooded Roads</h4>
-                            <p>Turn around, don't drown. Just 6 inches of moving water can knock you down, and 12 inches can carry away a vehicle.</p>
-                        </div>
-                        <div class="tip-card">
-                            <div class="tip-icon">📱</div>
-                            <h4>Stay Informed</h4>
-                            <p>Monitor weather alerts, evacuation orders, and emergency communications from local authorities.</p>
-                        </div>
-                        <div class="tip-card">
-                            <div class="tip-icon">🎒</div>
-                            <h4>Emergency Kit Ready</h4>
-                            <p>Keep 72-hour emergency supplies including water, food, medications, and battery-powered radio.</p>
-                        </div>
-                        <div class="tip-card">
-                            <div class="tip-icon">🏠</div>
-                            <h4>Know Your Evacuation Plan</h4>
-                            <p>Identify multiple evacuation routes and have a family communication plan in place.</p>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <!-- Forecast Content Tab -->
-            <div class="tab-content" id="forecast-content">
-                <section class="forecast-section">
-                    <div class="section-header">
-                        <h3>📈 7-Day Flood Risk Forecast</h3>
-                        <p>Predictive modeling based on weather forecasts, soil conditions, and historical data</p>
-                    </div>
-                    
-                    <!-- 7-Day Risk Forecast -->
-                    <div class="risk-forecast-container">
-                        <div class="forecast-grid" id="riskForecastGrid">
-                            <!-- Forecast items will be populated by JavaScript -->
-                        </div>
-                    </div>
-
-                    <!-- Precipitation Forecast Chart -->
-                    <div class="precipitation-section">
-                        <h4>7-Day Precipitation & Risk Correlation</h4>
-                        <div class="precipitation-chart">
-                            <canvas id="precipitationForecastChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Watershed Conditions -->
-                    <div class="watershed-conditions">
-                        <h4>Watershed Health Indicators</h4>
-                        <div class="watershed-grid">
-                            <div class="watershed-card">
-                                <div class="watershed-icon">🏔️</div>
-                                <div class="watershed-title">Snowpack Level</div>
-                                <div class="watershed-value" id="snowpackLevel">115%</div>
-                                <div class="watershed-description">Of seasonal average</div>
-                            </div>
-                            <div class="watershed-card">
-                                <div class="watershed-icon">🌡️</div>
-                                <div class="watershed-title">Temperature Trend</div>
-                                <div class="watershed-value" id="tempTrend">Rising</div>
-                                <div class="watershed-description">Potential snow melt</div>
-                            </div>
-                            <div class="watershed-card">
-                                <div class="watershed-icon">💨</div>
-                                <div class="watershed-title">Atmospheric River</div>
-                                <div class="watershed-value" id="atmosphericRiver">Moderate</div>
-                                <div class="watershed-description">Moisture transport</div>
-                            </div>
-                            <div class="watershed-card">
-                                <div class="watershed-icon">⛈️</div>
-                                <div class="watershed-title">Storm Systems</div>
-                                <div class="watershed-value" id="stormSystems">2-3</div>
-                                <div class="watershed-description">Expected this week</div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <!-- Historical Trends Content Tab -->
-            <div class="tab-content" id="historical-content">
-                <section class="historical-section">
-                    <div class="section-header">
-                        <h3>📊 Historical Flood Trends & Climate Analysis</h3>
-                        <p>Washington State flood patterns over the past decade with climate change indicators</p>
-                    </div>
-
-                    <!-- Historical Charts -->
-                    <div class="historical-charts">
-                        <div class="chart-container">
-                            <h4>Annual Flood Events (2015-2024)</h4>
-                            <canvas id="historicalFloodsChart"></canvas>
-                        </div>
-                        <div class="chart-container">
-                            <h4>Seasonal Rainfall Patterns</h4>
-                            <canvas id="seasonalRainfallChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Climate Trends -->
-                    <div class="climate-trends">
-                        <h4>Climate Change Impact Analysis</h4>
-                        <div class="trends-grid">
-                            <div class="trend-card increasing">
-                                <div class="trend-icon">📈</div>
-                                <div class="trend-title">Extreme Precipitation</div>
-                                <div class="trend-value">+23%</div>
-                                <div class="trend-description">Increase in heavy rainfall events since 2000</div>
-                            </div>
-                            <div class="trend-card stable">
-                                <div class="trend-icon">➡️</div>
-                                <div class="trend-title">Average Rainfall</div>
-                                <div class="trend-value">+2%</div>
-                                <div class="trend-description">Slight increase in annual precipitation</div>
-                            </div>
-                            <div class="trend-card increasing">
-                                <div class="trend-icon">🔥</div>
-                                <div class="trend-title">Temperature</div>
-                                <div class="trend-value">+1.8°F</div>
-                                <div class="trend-description">Average warming since 1990</div>
-                            </div>
-                            <div class="trend-card decreasing">
-                                <div class="trend-icon">❄️</div>
-                                <div class="trend-title">Snowpack Duration</div>
-                                <div class="trend-value">-12 days</div>
-                                <div class="trend-description">Earlier spring melt timing</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Notable Flood Events -->
-                    <div class="notable-events">
-                        <h4>Notable Flood Events in Washington State</h4>
-                        <div class="events-timeline">
-                            <div class="event-item">
-                                <div class="event-date">November 2024</div>
-                                <div class="event-title">Atmospheric River Event</div>
-                                <div class="event-description">Record rainfall caused widespread flooding across Western Washington</div>
-                                <div class="event-impact">Economic Impact: $45M</div>
-                            </div>
-                            <div class="event-item">
-                                <div class="event-date">January 2022</div>
-                                <div class="event-title">King County Flooding</div>
-                                <div class="event-description">Rapid snowmelt and rain caused river flooding</div>
-                                <div class="event-impact">Homes Affected: 230</div>
-                            </div>
-                            <div class="event-item">
-                                <div class="event-date">February 2020</div>
-                                <div class="event-title">Coastal Storm System</div>
-                                <div class="event-description">Pacific storm brought heavy rain and coastal flooding</div>
-                                <div class="event-impact">Roads Closed: 45</div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <!-- Alerts & Warnings Content Tab -->
-            <div class="tab-content" id="alerts-content">
-                <section class="alerts-section">
-                    <div class="section-header">
-                        <h3>🚨 Active Flood Alerts & Early Warnings</h3>
-                        <p>Real-time alerts from National Weather Service, King County, and local emergency management</p>
-                    </div>
-
-                    <!-- Active Alerts -->
-                    <div class="active-alerts" id="activeAlerts">
-                        <!-- Alerts will be populated by JavaScript -->
-                    </div>
-
-                    <!-- Warning Systems -->
-                    <div class="warning-systems">
-                        <h4>🔔 Emergency Alert Systems</h4>
-                        <div class="systems-grid">
-                            <div class="system-card">
-                                <div class="system-icon">📡</div>
-                                <div class="system-title">National Weather Service</div>
-                                <div class="system-status active">Active Monitoring</div>
-                                <div class="system-description">Federal weather alerts and warnings</div>
-                            </div>
-                            <div class="system-card">
-                                <div class="system-icon">🏛️</div>
-                                <div class="system-title">King County Emergency</div>
-                                <div class="system-status active">Active Monitoring</div>
-                                <div class="system-description">Local emergency management alerts</div>
-                            </div>
-                            <div class="system-card">
-                                <div class="system-icon">🌊</div>
-                                <div class="system-title">USGS River Gauges</div>
-                                <div class="system-status active">Active Monitoring</div>
-                                <div class="system-description">Real-time streamflow monitoring</div>
-                            </div>
-                            <div class="system-card">
-                                <div class="system-icon">📱</div>
-                                <div class="system-title">WA Emergency Alerts</div>
-                                <div class="system-status active">Active Monitoring</div>
-                                <div class="system-description">Statewide emergency broadcast system</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Evacuation Information -->
-                    <div class="evacuation-info">
-                        <h4>🚪 Evacuation Routes & Shelters</h4>
-                        <div class="evacuation-grid">
-                            <div class="evacuation-card">
-                                <div class="evacuation-icon">🗺️</div>
-                                <div class="evacuation-title">Primary Evacuation Routes</div>
-                                <ul class="evacuation-list">
-                                    <li>I-5 North/South - Main arterial</li>
-                                    <li>I-405 - Alternative route</li>
-                                    <li>SR-520 - East-West corridor</li>
-                                    <li>I-90 - Mountain passes access</li>
-                                </ul>
-                            </div>
-                            <div class="evacuation-card">
-                                <div class="evacuation-icon">🏫</div>
-                                <div class="evacuation-title">Emergency Shelters</div>
-                                <ul class="evacuation-list">
-                                    <li>Seattle Center - 1,000 capacity</li>
-                                    <li>Bellevue High School - 500 capacity</li>
-                                    <li>Renton Community Center - 300 capacity</li>
-                                    <li>Federal Way Recreation Center - 400 capacity</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <!-- About Section -->
-            <section class="hero about-section">
-                <h2>About FloodWatch WA</h2>
-                <p>This flood risk visualization dashboard integrates real-time data from multiple sources including King County flood warning systems, NOAA rainfall monitoring, USGS streamflow gauges, and Washington State emergency management. The system uses advanced modeling to assess short-term flood risks and provide early warnings to protect communities across Western Washington. Historical trend analysis helps identify climate change impacts on flood patterns, supporting long-term resilience planning.</p>
-            </section>
-        </div>
-    </main>
-
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>About FloodWatch WA</h4>
-                    <p>A comprehensive flood risk monitoring system for Washington State, integrating data from multiple agencies to provide real-time flood intelligence and early warning capabilities for community safety.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Data Sources</h4>
-                    <ul>
-                        <li>King County Flood Warning System</li>
-                        <li>NOAA Weather Service - Precipitation Data</li>
-                        <li>USGS Water Services - Stream Gauges</li>
-                        <li>Washington State Emergency Management</li>
-                        <li>National Weather Service - Flood Warnings</li>
-                        <li>Pacific Northwest Seismic Network</li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Emergency Contacts</h4>
-                    <p>King County Emergency Management<br>
-                    📞 Emergency: 911<br>
-                    📞 Non-Emergency: (206) 296-3830<br>
-                    🌐 <a href="https://kingcounty.gov/emergency" style="color: #74b9ff;">kingcounty.gov/emergency</a></p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2024 FloodWatch WA | Washington State Flood Risk Intelligence Platform | For informational purposes - always follow official emergency guidance</p>
-            </div>
-        </div>
-    </footer>
+    </div>
 
     <script src="script.js"></script>
+    <script>
+        // Initialize the global map and features
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeGlobalMap();
+            updateGlobalStatistics();
+            startDataUpdateInterval();
+        });
+    </script>
 </body>
 </html>
