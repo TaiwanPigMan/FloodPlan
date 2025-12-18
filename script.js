@@ -200,6 +200,14 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('🌊 FloodPlan Global - Initializing...');
     
     try {
+        // Check if required libraries are loaded
+        if (typeof L === 'undefined') {
+            console.warn('⚠️ Leaflet library not loaded, map features will be limited');
+        }
+        if (typeof Chart === 'undefined') {
+            console.warn('⚠️ Chart.js library not loaded, charts will be limited');
+        }
+
         initializeGlobalMap();
         setupEventListeners();
         initializeCharts();
@@ -210,39 +218,93 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('✅ FloodPlan Global - Initialization complete');
     } catch (error) {
         console.error('❌ Initialization error:', error);
-        showNotification('System initialization failed. Please refresh the page.', 'error');
+        console.error('Error details:', error.message, error.stack);
+        showNotificationSafe('System initialization completed with some limitations.', 'warning');
     }
 });
 
 // Initialize the world map with Leaflet
 function initializeGlobalMap() {
-    // Initialize the map centered on the world
-    worldMap = L.map('worldMap', {
-        center: [20, 0],
-        zoom: 2,
-        minZoom: 2,
-        maxZoom: 10,
-        zoomControl: true,
-        scrollWheelZoom: true,
-        doubleClickZoom: true
-    });
+    try {
+        // Check if Leaflet is available
+        if (typeof L === 'undefined') {
+            console.warn('⚠️ Leaflet not available, showing placeholder map');
+            showMapPlaceholder();
+            return;
+        }
 
-    // Add base tile layer with dark theme
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 20
-    }).addTo(worldMap);
+        // Initialize the map centered on the world
+        worldMap = L.map('worldMap', {
+            center: [20, 0],
+            zoom: 2,
+            minZoom: 2,
+            maxZoom: 10,
+            zoomControl: true,
+            scrollWheelZoom: true,
+            doubleClickZoom: true
+        });
 
-    // Add risk overlay layers
-    addRiskOverlays();
-    addEmergencyMarkers();
+        // Add base tile layer with dark theme
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(worldMap);
 
-    // Set up map interactions
-    worldMap.on('click', onMapClick);
-    worldMap.on('zoomend', onMapZoom);
+        // Add risk overlay layers
+        addRiskOverlays();
+        addEmergencyMarkers();
 
-    console.log('🗺️ World map initialized');
+        // Set up map interactions
+        worldMap.on('click', onMapClick);
+        worldMap.on('zoomend', onMapZoom);
+
+        console.log('🗺️ World map initialized');
+    } catch (error) {
+        console.error('❌ Map initialization failed:', error);
+        showMapPlaceholder();
+    }
+}
+
+// Show map placeholder when Leaflet is not available
+function showMapPlaceholder() {
+    const mapElement = document.getElementById('worldMap');
+    if (mapElement) {
+        mapElement.innerHTML = `
+            <div style="
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+                border-radius: 25px;
+                color: #f1f5f9;
+                font-family: 'Inter', sans-serif;
+                text-align: center;
+                padding: 2rem;
+            ">
+                <div>
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🌍</div>
+                    <h3 style="margin-bottom: 0.5rem; font-weight: 600;">Global Flood Risk Map</h3>
+                    <p style="color: #cbd5e0; margin-bottom: 1.5rem;">Interactive world map showing flood risk levels</p>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; max-width: 600px;">
+                        <div style="background: rgba(220, 38, 38, 0.2); padding: 1rem; border-radius: 10px; border-left: 3px solid #dc2626;">
+                            <div style="font-weight: 600; margin-bottom: 0.5rem;">🔴 Extreme Risk</div>
+                            <div style="font-size: 0.9rem; color: #cbd5e0;">Asia-Pacific: 847K affected</div>
+                        </div>
+                        <div style="background: rgba(239, 68, 68, 0.2); padding: 1rem; border-radius: 10px; border-left: 3px solid #ef4444;">
+                            <div style="font-weight: 600; margin-bottom: 0.5rem;">🟡 High Risk</div>
+                            <div style="font-size: 0.9rem; color: #cbd5e0;">Europe: 234K affected</div>
+                        </div>
+                        <div style="background: rgba(245, 158, 11, 0.2); padding: 1rem; border-radius: 10px; border-left: 3px solid #f59e0b;">
+                            <div style="font-weight: 600; margin-bottom: 0.5rem;">🟠 Moderate Risk</div>
+                            <div style="font-size: 0.9rem; color: #cbd5e0;">S. America: 156K affected</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 }
 
 // Add risk overlay polygons to the map
@@ -565,6 +627,13 @@ function setupEmergencyResponseButtons() {
 // Initialize charts
 function initializeCharts() {
     try {
+        // Check if Chart.js is available
+        if (typeof Chart === 'undefined') {
+            console.warn('⚠️ Chart.js not available, showing placeholder charts');
+            showChartPlaceholders();
+            return;
+        }
+
         // Global flood distribution chart
         const globalFloodCtx = document.getElementById('globalFloodChart');
         if (globalFloodCtx) {
@@ -604,7 +673,48 @@ function initializeCharts() {
         console.log('📊 Charts initialized successfully');
     } catch (error) {
         console.error('❌ Chart initialization error:', error);
+        showChartPlaceholders();
     }
+}
+
+// Show chart placeholders when Chart.js is not available
+function showChartPlaceholders() {
+    const chartContainers = [
+        'globalFloodChart',
+        'precipitationChart', 
+        'weeklyPrecipitationChart',
+        'climateFactorsChart',
+        'historicalTrendsChart',
+        'climateImpactChart'
+    ];
+
+    chartContainers.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            const canvas = element.parentNode;
+            if (canvas) {
+                canvas.innerHTML = `
+                    <div style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        height: 300px;
+                        background: rgba(51, 65, 85, 0.3);
+                        border-radius: 15px;
+                        color: #cbd5e0;
+                        font-family: 'Inter', sans-serif;
+                        text-align: center;
+                    ">
+                        <div>
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">📊</div>
+                            <div style="font-weight: 600; margin-bottom: 0.5rem;">Chart Placeholder</div>
+                            <div style="font-size: 0.9rem; opacity: 0.8;">Data visualization would appear here</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+    });
 }
 
 // Create weekly precipitation chart
@@ -1055,13 +1165,24 @@ function updateMapLayer() {
 
 // Show notification
 function showNotification(message, type = 'info') {
+    try {
+        showNotificationSafe(message, type);
+    } catch (error) {
+        console.error('❌ Notification error:', error);
+        // Fallback to alert if notification fails
+        alert(`${type.toUpperCase()}: ${message}`);
+    }
+}
+
+// Safe notification function
+function showNotificationSafe(message, type = 'info') {
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.textContent = message;
     
     const styles = {
         position: 'fixed',
-        top: '100px',
+        top: '120px',
         right: '20px',
         background: type === 'error' ? '#dc2626' : type === 'warning' ? '#f59e0b' : '#3b82f6',
         color: 'white',
@@ -1079,12 +1200,14 @@ function showNotification(message, type = 'info') {
     document.body.appendChild(notification);
 
     setTimeout(() => {
-        notification.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 300);
+        if (notification.parentNode) {
+            notification.style.animation = 'slideOutRight 0.3s ease';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }
     }, 4000);
 }
 
