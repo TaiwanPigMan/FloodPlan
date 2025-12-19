@@ -226,32 +226,44 @@ document.addEventListener('DOMContentLoaded', function() {
 // Initialize the world map with Leaflet
 function initializeGlobalMap() {
     try {
-        // Check if Leaflet is available
+        // Wait for Leaflet to be available
         if (typeof L === 'undefined') {
-            console.warn('⚠️ Leaflet not available, showing placeholder map');
-            showMapPlaceholder();
+            console.warn('⚠️ Leaflet not loaded yet, retrying in 1 second...');
+            setTimeout(initializeGlobalMap, 1000);
             return;
         }
+
+        // Ensure the map container exists
+        const mapContainer = document.getElementById('worldMap');
+        if (!mapContainer) {
+            console.error('❌ Map container not found');
+            return;
+        }
+
+        // Clear any existing content
+        mapContainer.innerHTML = '';
 
         // Initialize the map centered on the world
         worldMap = L.map('worldMap', {
             center: [20, 0],
             zoom: 2,
-            minZoom: 2,
-            maxZoom: 10,
+            minZoom: 1,
+            maxZoom: 18,
             zoomControl: true,
             scrollWheelZoom: true,
             doubleClickZoom: true
         });
 
         // Add base tile layer with dark theme
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
             subdomains: 'abcd',
-            maxZoom: 20
-        }).addTo(worldMap);
+            maxZoom: 18
+        });
 
-        // Add risk overlay layers
+        tileLayer.addTo(worldMap);
+
+        // Add overlays immediately after map initialization
         addRiskOverlays();
         addEmergencyMarkers();
 
@@ -259,9 +271,15 @@ function initializeGlobalMap() {
         worldMap.on('click', onMapClick);
         worldMap.on('zoomend', onMapZoom);
 
-        console.log('🗺️ World map initialized');
+        // Force map to resize and render
+        setTimeout(() => {
+            worldMap.invalidateSize();
+        }, 100);
+
+        console.log('🗺️ World map initialized successfully');
     } catch (error) {
         console.error('❌ Map initialization failed:', error);
+        console.error('Error stack:', error.stack);
         showMapPlaceholder();
     }
 }
@@ -448,7 +466,6 @@ function onMapClick(e) {
     const region = findClosestRegion(lat, lng);
     if (region) {
         updateRegionInfo(region);
-        showRegionAnalysis(region);
     }
 }
 
@@ -554,16 +571,26 @@ function updateRegionInfo(region) {
 
 // Handle map zoom events
 function onMapZoom(e) {
-    const zoom = worldMap.getZoom();
-    
-    // Show/hide markers based on zoom level
-    emergencyMarkers.forEach(marker => {
-        if (zoom < 3) {
-            marker.setOpacity(0.7);
-        } else {
-            marker.setOpacity(1);
+    try {
+        if (!worldMap || !emergencyMarkers) {
+            return;
         }
-    });
+        
+        const zoom = worldMap.getZoom();
+        
+        // Show/hide markers based on zoom level
+        emergencyMarkers.forEach(marker => {
+            if (marker && typeof marker.setOpacity === 'function') {
+                if (zoom < 3) {
+                    marker.setOpacity(0.7);
+                } else {
+                    marker.setOpacity(1);
+                }
+            }
+        });
+    } catch (error) {
+        console.error('❌ Error handling map zoom:', error);
+    }
 }
 
 // Setup event listeners
@@ -1003,106 +1030,158 @@ function simulateDataChanges() {
 
 // Emergency response functions
 function showEvacuationRoutes() {
-    worldMap.eachLayer(layer => {
-        if (layer.options && layer.options.className === 'evacuation-route') {
-            worldMap.removeLayer(layer);
+    try {
+        if (!worldMap) {
+            showNotification('Map not available. Please wait for map to load.', 'warning');
+            return;
         }
-    });
 
-    // Add sample evacuation routes
-    const evacuationRoutes = [
-        [[23.8, 90.3], [24.0, 90.8], [24.2, 91.2]],
-        [[50.1, 8.7], [50.3, 8.9], [50.5, 9.1]]
-    ];
+        worldMap.eachLayer(layer => {
+            if (layer.options && layer.options.className === 'evacuation-route') {
+                worldMap.removeLayer(layer);
+            }
+        });
 
-    evacuationRoutes.forEach(route => {
-        L.polyline(route, {
-            color: '#fbbf24',
-            weight: 4,
-            opacity: 0.8,
-            className: 'evacuation-route'
-        }).addTo(worldMap).bindPopup('Emergency Evacuation Route');
-    });
+        // Add sample evacuation routes
+        const evacuationRoutes = [
+            [[23.8, 90.3], [24.0, 90.8], [24.2, 91.2]],
+            [[50.1, 8.7], [50.3, 8.9], [50.5, 9.1]]
+        ];
 
-    showNotification('Evacuation routes displayed on map', 'info');
+        evacuationRoutes.forEach(route => {
+            L.polyline(route, {
+                color: '#fbbf24',
+                weight: 4,
+                opacity: 0.8,
+                className: 'evacuation-route'
+            }).addTo(worldMap).bindPopup('Emergency Evacuation Route');
+        });
+
+        showNotification('Evacuation routes displayed on map', 'info');
+    } catch (error) {
+        console.error('❌ Error showing evacuation routes:', error);
+        showNotification('Unable to display evacuation routes', 'error');
+    }
 }
 
 function showEmergencyShelters() {
-    // Sample shelter locations
-    const shelters = [
-        { location: [23.9, 90.5], capacity: 1000 },
-        { location: [50.2, 8.8], capacity: 500 },
-        { location: [-27.4, 153.1], capacity: 750 }
-    ];
+    try {
+        if (!worldMap) {
+            showNotification('Map not available. Please wait for map to load.', 'warning');
+            return;
+        }
 
-    shelters.forEach(shelter => {
-        L.circleMarker(shelter.location, {
-            radius: 8,
-            fillColor: '#22c55e',
-            color: '#16a34a',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.8
-        }).addTo(worldMap).bindPopup(`Emergency Shelter<br>Capacity: ${shelter.capacity} people`);
-    });
+        // Sample shelter locations
+        const shelters = [
+            { location: [23.9, 90.5], capacity: 1000 },
+            { location: [50.2, 8.8], capacity: 500 },
+            { location: [-27.4, 153.1], capacity: 750 }
+        ];
 
-    showNotification('Emergency shelters displayed on map', 'info');
+        shelters.forEach(shelter => {
+            L.circleMarker(shelter.location, {
+                radius: 8,
+                fillColor: '#22c55e',
+                color: '#16a34a',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).addTo(worldMap).bindPopup(`Emergency Shelter<br>Capacity: ${shelter.capacity} people`);
+        });
+
+        showNotification('Emergency shelters displayed on map', 'info');
+    } catch (error) {
+        console.error('❌ Error showing emergency shelters:', error);
+        showNotification('Unable to display emergency shelters', 'error');
+    }
 }
 
 function showRescueUnits() {
-    // Sample rescue unit locations
-    const rescueUnits = [
-        { location: [24.1, 90.7], type: 'Helicopter' },
-        { location: [50.4, 8.9], type: 'Boat Team' },
-        { location: [-27.3, 153.2], type: 'Ground Unit' }
-    ];
+    try {
+        if (!worldMap) {
+            showNotification('Map not available. Please wait for map to load.', 'warning');
+            return;
+        }
 
-    rescueUnits.forEach(unit => {
-        L.marker(unit.location, {
-            icon: L.divIcon({
-                html: '🚁',
-                className: 'rescue-marker',
-                iconSize: [20, 20]
-            })
-        }).addTo(worldMap).bindPopup(`Rescue Unit: ${unit.type}`);
-    });
+        // Sample rescue unit locations
+        const rescueUnits = [
+            { location: [24.1, 90.7], type: 'Helicopter' },
+            { location: [50.4, 8.9], type: 'Boat Team' },
+            { location: [-27.3, 153.2], type: 'Ground Unit' }
+        ];
 
-    showNotification('Rescue units displayed on map', 'info');
+        rescueUnits.forEach(unit => {
+            L.marker(unit.location, {
+                icon: L.divIcon({
+                    html: '🚁',
+                    className: 'rescue-marker',
+                    iconSize: [20, 20]
+                })
+            }).addTo(worldMap).bindPopup(`Rescue Unit: ${unit.type}`);
+        });
+
+        showNotification('Rescue units displayed on map', 'info');
+    } catch (error) {
+        console.error('❌ Error showing rescue units:', error);
+        showNotification('Unable to display rescue units', 'error');
+    }
 }
 
 function showSupplyChains() {
-    // Sample supply chain routes
-    const supplyRoutes = [
-        [[23.7, 90.1], [23.9, 90.4], [24.1, 90.7]],
-        [[50.0, 8.5], [50.2, 8.8], [50.4, 9.0]]
-    ];
+    try {
+        if (!worldMap) {
+            showNotification('Map not available. Please wait for map to load.', 'warning');
+            return;
+        }
 
-    supplyRoutes.forEach(route => {
-        L.polyline(route, {
-            color: '#8b5cf6',
-            weight: 3,
-            opacity: 0.7,
-            className: 'supply-route',
-            dashArray: '10, 10'
-        }).addTo(worldMap).bindPopup('Supply Chain Route');
-    });
+        // Sample supply chain routes
+        const supplyRoutes = [
+            [[23.7, 90.1], [23.9, 90.4], [24.1, 90.7]],
+            [[50.0, 8.5], [50.2, 8.8], [50.4, 9.0]]
+        ];
 
-    showNotification('Supply chains displayed on map', 'info');
+        supplyRoutes.forEach(route => {
+            L.polyline(route, {
+                color: '#8b5cf6',
+                weight: 3,
+                opacity: 0.7,
+                className: 'supply-route',
+                dashArray: '10, 10'
+            }).addTo(worldMap).bindPopup('Supply Chain Route');
+        });
+
+        showNotification('Supply chains displayed on map', 'info');
+    } catch (error) {
+        console.error('❌ Error showing supply chains:', error);
+        showNotification('Unable to display supply chains', 'error');
+    }
 }
 
 // Region zoom functions
 function zoomToRegion(regionName) {
-    const regionBounds = {
-        'global': [[60, -180], [-60, 180]],
-        'asia': [[50, 60], [10, 150]],
-        'europe': [[70, -10], [35, 40]],
-        'americas': [[70, -170], [-55, -30]],
-        'africa': [[35, -20], [-35, 55]]
-    };
+    try {
+        if (!worldMap) {
+            showNotification('Map not available. Please wait for map to load.', 'warning');
+            return;
+        }
 
-    if (regionBounds[regionName]) {
-        worldMap.fitBounds(regionBounds[regionName]);
-        showNotification(`Zoomed to ${regionName}`, 'info');
+        const regionBounds = {
+            'global': [[60, -180], [-60, 180]],
+            'asia': [[50, 60], [10, 150]],
+            'europe': [[70, -10], [35, 40]],
+            'americas': [[70, -170], [-55, -30]],
+            'africa': [[35, -20], [-35, 55]]
+        };
+
+        if (regionBounds[regionName]) {
+            worldMap.fitBounds(regionBounds[regionName]);
+            showNotification(`Zoomed to ${regionName}`, 'info');
+        } else {
+            showNotification(`Unknown region: ${regionName}`, 'error');
+        }
+    } catch (error) {
+        console.error('❌ Error zooming to region:', error);
+        showNotification('Unable to zoom to region', 'error');
     }
 }
 
@@ -1148,13 +1227,23 @@ function toggleEmergencyDetails() {
 
 // Update map data based on current settings
 function updateMapData() {
-    // Update overlays based on current timeframe
-    riskPolygons.forEach(polygon => {
-        const newOpacity = currentTimeframe === 'current' ? 0.3 : 0.5;
-        polygon.setStyle({ fillOpacity: newOpacity });
-    });
+    try {
+        // Check if map and polygons are initialized
+        if (!worldMap || !riskPolygons || riskPolygons.length === 0) {
+            console.warn('⚠️ Map or polygons not initialized, skipping data update');
+            return;
+        }
+        
+        // Update overlays based on current timeframe
+        riskPolygons.forEach(polygon => {
+            const newOpacity = currentTimeframe === 'current' ? 0.3 : 0.5;
+            polygon.setStyle({ fillOpacity: newOpacity });
+        });
 
-    console.log(`🗺️ Map data updated for ${currentTimeframe}`);
+        console.log(`🗺️ Map data updated for ${currentTimeframe}`);
+    } catch (error) {
+        console.error('❌ Error updating map data:', error);
+    }
 }
 
 // Update map layer
